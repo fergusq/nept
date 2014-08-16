@@ -1,5 +1,6 @@
 package org.kaivos.nept.parser;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -34,6 +35,16 @@ public class TokenList {
 	}
 	
 	/**
+	 * Returns the next tokenas a string from the list and increases the index counter
+	 * 
+	 * @return The next token
+	 * @throws IndexOutOfBoundsException If no tokens left
+	 */
+	public String nextString() {
+		return tokens.get(index++).getToken();
+	}
+	
+	/**
 	 * Lookahead, returns the next token from the list, equivalent to <code>seek(0)</code>
 	 * 
 	 * @return The next token
@@ -52,6 +63,27 @@ public class TokenList {
 	 */
 	public Token seek(int n) {
 		return tokens.get(index+n);
+	}
+	
+	/**
+	 * Lookahead, returns the next token as a string from the list, equivalent to <code>seekString(0)</code>
+	 * 
+	 * @return The next token
+	 * @throws IndexOutOfBoundsException If no tokens left
+	 */
+	public String seekString() {
+		return tokens.get(index).getToken();
+	}
+	
+	/**
+	 * Lookahead, returns a string
+	 * 
+	 * @param n
+	 * @return The next token
+	 * @throws IndexOutOfBoundsException If no tokens left
+	 */
+	public String seekString(int n) {
+		return tokens.get(index+n).getToken();
 	}
 	
 	/**
@@ -74,10 +106,34 @@ public class TokenList {
 	}
 	
 	/**
+	 * Accepts a keyword
+	 * 
+	 * @param keyword
+	 * @throws ParsingException if unexpected token was encountered
+	 * @throws IndexOutOfBoundsException If no tokens left
+	 */
+	public void accept(String... keyword) throws ParsingException {
+		Token next = next();
+		if (!Arrays.asList(keyword).contains(next.getToken()))
+			throw new ParsingException("Expected `" + keyword + "'", next);
+	}
+	
+	/**
 	 * Resets the index counter
 	 */
 	public void reset() {
 		index = 0;
+	}
+	
+	/**
+	 * Appends a token to the end of the list
+	 * 
+	 * @param token The token
+	 * @return self
+	 */
+	public TokenList append(Token token) {
+		tokens.add(token);
+		return this;
 	}
 	
 	@Override

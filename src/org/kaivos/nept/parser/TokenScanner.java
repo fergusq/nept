@@ -24,6 +24,8 @@ public class TokenScanner {
 	private ArrayList<String> operators = new ArrayList<>();
 	private boolean allPunctuation = true;
 	
+	private String EOF = null;
+	
 	public TokenScanner() {}
 	
 	/**
@@ -62,6 +64,17 @@ public class TokenScanner {
 	 */
 	public TokenScanner ignoreWhitespace(boolean value) {
 		ignoreWhitespace = value;
+		return this;
+	}
+	
+	/**
+	 * Tells the scanner to append a string to the end of the list when EOF is encountered.
+	 * 
+	 * @param text The text to be appended
+	 * @return self
+	 */
+	public TokenScanner appendOnEOF(String text) {
+		EOF = text;
 		return this;
 	}
 	
@@ -145,10 +158,14 @@ public class TokenScanner {
 			i++;
 			
 			if (source.charAt(i)=='\n') line++;
-			if (ignore.contains(source.charAt(i)))
+			if (ignore.contains(source.charAt(i))) {
+				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 				continue;
-			if (!dontIgnore.contains(source.charAt(i)) && ignoreWhitespace && Character.isWhitespace(source.charAt(i)))
+			}
+			if (!dontIgnore.contains(source.charAt(i)) && ignoreWhitespace && Character.isWhitespace(source.charAt(i))) {
+				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 				continue;
+			}
 			String future = source.substring(i);
 			for (String op : operators) {
 				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
@@ -174,12 +191,15 @@ public class TokenScanner {
 				i = i + 0;
 				continue outer;
 			}
-			
-			currToken += source.charAt(i);
+		
+			currToken += future.charAt(0);
 		}
 		
 		if (!currToken.isEmpty())
 			tokens.add(new Token(currToken, file, line));
+		
+		if (EOF != null && !EOF.isEmpty())
+			tokens.add(new Token(EOF, file, line));
 		
 		return new TokenList(tokens);
 	}
