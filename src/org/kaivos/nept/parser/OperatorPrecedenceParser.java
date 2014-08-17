@@ -1,9 +1,8 @@
 package org.kaivos.nept.parser;
 
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import org.kaivos.nept.function.TriFunction;
 
 /**
  * Parses operators 
@@ -16,15 +15,15 @@ public class OperatorPrecedenceParser<E> {
 
 	Function<String, Integer> getPrecedenceLevel;
 	Function<String, E> parsePrimary;
-	TriFunction<String, E, E, E> construct;
+	Function<String, BinaryOperator<E>> construct;
 	
-	public OperatorPrecedenceParser(Function<String, Integer> pl, Function<String, E> primaryParser, TriFunction<String, E, E, E> constructor) {
+	public OperatorPrecedenceParser(Function<String, Integer> pl, Function<String, E> primaryParser, Function<String, BinaryOperator<E>> constructor) {
 		getPrecedenceLevel = pl;
 		construct = constructor;
 		parsePrimary = primaryParser;
 	}
 	
-	public OperatorPrecedenceParser(Function<String, Integer> pl, TriFunction<String, E, E, E> constructor, Supplier<E> primaryParser) {
+	public OperatorPrecedenceParser(Function<String, Integer> pl, Function<String, BinaryOperator<E>> constructor, Supplier<E> primaryParser) {
 		getPrecedenceLevel = pl;
 		construct = constructor;
 		parsePrimary = str -> primaryParser.get();
@@ -34,7 +33,7 @@ public class OperatorPrecedenceParser<E> {
 		this(
 				library::getPrecedence,
 				library::parseRhs,
-				library::construct
+				library::getConstructor
 		);
 	}
 	
@@ -51,7 +50,7 @@ public class OperatorPrecedenceParser<E> {
 			while (getPrecedenceLevel.apply(tl.seek().getToken()) > oplevel) {
 				rhs = _parse(tl, rhs, getPrecedenceLevel.apply(tl.seekString()));
 			}
-			lhs = construct.apply(op, lhs, rhs);
+			lhs = construct.apply(op).apply(lhs, rhs);
 		}
 		return lhs;
 	}

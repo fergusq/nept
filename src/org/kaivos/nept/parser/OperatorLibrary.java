@@ -1,7 +1,7 @@
 package org.kaivos.nept.parser;
 
 import java.util.HashMap;
-import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.function.Supplier;
 
 /**
@@ -13,7 +13,7 @@ import java.util.function.Supplier;
  */
 public class OperatorLibrary<E> {
 
-	private HashMap<String, BiFunction<E, E, E>> constructors = new HashMap<>();
+	private HashMap<String, BinaryOperator<E>> constructors = new HashMap<>();
 	private HashMap<String, Integer> precedence = new HashMap<>();
 	private HashMap<String, Supplier<E>> rhsParsers = new HashMap<>();
 	private Supplier<E> defaultRhsParser;
@@ -30,7 +30,7 @@ public class OperatorLibrary<E> {
 	 * @param rhsParser The right-side parser function
 	 * @param handler The constructor function
 	 */
-	public void add(String op, BiFunction<E, E, E> handler) {
+	public void add(String op, BinaryOperator<E> handler) {
 		add(op, level, handler);
 	}
 	
@@ -40,7 +40,7 @@ public class OperatorLibrary<E> {
 	 * @param op The operator
 	 * @param handler The constructor function
 	 */
-	public void add(String op, Supplier<E> rhsParser, BiFunction<E, E, E> handler) {
+	public void add(String op, Supplier<E> rhsParser, BinaryOperator<E> handler) {
 		add(op, level, rhsParser, handler);
 	}
 	
@@ -51,7 +51,7 @@ public class OperatorLibrary<E> {
 	 * @param level The precedence level
 	 * @param handler The constructor function
 	 */
-	public void add(String op, int level, BiFunction<E, E, E> handler) {
+	public void add(String op, int level, BinaryOperator<E> handler) {
 		add(op, level, defaultRhsParser, handler);
 	}
 	
@@ -63,7 +63,7 @@ public class OperatorLibrary<E> {
 	 * @param rhsParser The right-side parser function
 	 * @param handler The constructor function
 	 */
-	public void add(String op, int level, Supplier<E> rhsParser, BiFunction<E, E, E> handler) {
+	public void add(String op, int level, Supplier<E> rhsParser, BinaryOperator<E> handler) {
 		constructors.put(op, handler);
 		precedence.put(op, level);
 		rhsParsers.put(op, rhsParser);
@@ -98,7 +98,33 @@ public class OperatorLibrary<E> {
 		return constructors.get(op).apply(a, b);
 	}
 	
+	/**
+	 * Returns the constructor function of the operator
+	 * 
+	 * @param op The operator
+	 * @return The constructor
+	 */
+	public BinaryOperator<E> getConstructor(String op) {
+		return constructors.get(op);
+	}
+	
+	/**
+	 * Parses the right-side
+	 * 
+	 * @param op The operator
+	 * @return The syntax tree object of the right side
+	 */
 	public E parseRhs(String op) {
 		return rhsParsers.get(op).get();
+	}
+	
+	/**
+	 * Returns the RHS parser of the operator
+	 * 
+	 * @param op The operator
+	 * @return The parser
+	 */
+	public Supplier<E> getRhsParser(String op) {
+		return rhsParsers.get(op);
 	}
 }

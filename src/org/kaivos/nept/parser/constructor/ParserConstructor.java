@@ -1,9 +1,13 @@
-package org.kaivos.nept.parser;
+package org.kaivos.nept.parser.constructor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import org.kaivos.nept.parser.ParsingException;
+import org.kaivos.nept.parser.Token;
+import org.kaivos.nept.parser.TokenList;
 
 /**
  * Constructs a parser

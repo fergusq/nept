@@ -32,7 +32,7 @@ public class TokenScannerTester {
 	public static class Calculator {
 	
 		private OperatorLibrary<Integer> library;
-		private OperatorPrecedenceParser<Integer> parser;
+		private OperatorPrecedenceParser<Integer> opparser;
 		private TokenList tokenlist;
 		
 		public Calculator(TokenList tl) {
@@ -45,7 +45,7 @@ public class TokenScannerTester {
 			library.add("*", (a, b) -> a * b);
 			library.add("/", (a, b) -> a / b);
 			
-			parser = new OperatorPrecedenceParser<>(library);
+			opparser = new OperatorPrecedenceParser<>(library);
 		}
 		
 		public int parse() {
@@ -53,7 +53,7 @@ public class TokenScannerTester {
 		}
 		
 		private int parseExpression(TokenList tl) {
-			return parser.parse(tl, parsePrimary(tl));
+			return opparser.parse(tl, parsePrimary(tl));
 		}
 		
 		private int parsePrimary(TokenList tl) {
