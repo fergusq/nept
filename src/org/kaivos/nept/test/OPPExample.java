@@ -9,7 +9,7 @@ import org.kaivos.nept.parser.OperatorPrecedenceParser;
 import org.kaivos.nept.parser.TokenList;
 import org.kaivos.nept.parser.TokenScanner;
 
-public class TokenScannerTester {
+public class OPPExample {
 
 	/**
 	 * @param args
@@ -38,13 +38,17 @@ public class TokenScannerTester {
 		public Calculator(TokenList tl) {
 			this.tokenlist = tl;
 			
+			/* Declares the operator library – all operators use parsePrimary() as their RHS parser */
 			library = new OperatorLibrary<>(() -> parsePrimary(tl));
+			
+			/* Declares the operators*/
 			library.add("+", (a, b) -> a + b);
 			library.add("-", (a, b) -> a - b);
 			library.increaseLevel();
 			library.add("*", (a, b) -> a * b);
 			library.add("/", (a, b) -> a / b);
 			
+			/* Declares the OPP*/
 			opparser = new OperatorPrecedenceParser<>(library);
 		}
 		
