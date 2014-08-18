@@ -16,7 +16,7 @@ import org.kaivos.nept.parser.Token;
 import org.kaivos.nept.parser.TokenList;
 
 /**
- * Constructs a parser
+ * Constructs a parser TODO UNDER CONSTRUCTION
  * 
  * @author Iikka Hauhio
  *
@@ -31,6 +31,12 @@ public class ParserConstructor {
 		private boolean start = false;
 		
 		private PCParser or = null;
+		
+		private HashMap<String, ArrayList<Object>> properties = new HashMap<>();
+		
+		public PCParser() {
+			this.steps = new ArrayList<>();
+		}
 		
 		private PCParser(List<ParsingStep> steps) {
 			this.steps = steps;
@@ -55,11 +61,17 @@ public class ParserConstructor {
 			parse(tl);
 		}
 		
-		public Set<String> getStartTokens() {
+		private Set<String> getStartTokens() {
 			Set<String> news = new HashSet<>();
 			news.addAll(startTokens);
 			if (or != null) news.addAll(or.startTokens);
 			return news;
+		}
+		
+		protected void setProperty(String name, Object value) {
+			if (properties.get(name) == null)
+				properties.put(name, new ArrayList<>());
+			properties.get(name).add(value);
 		}
 		
 		/**
@@ -74,6 +86,24 @@ public class ParserConstructor {
 				if (!Arrays.asList(keyword).contains(next.getToken()))
 					throw new ParsingException("Expected one of `"
 							+ Arrays.asList(keyword).stream().collect(Collectors.joining("', `")) + "'", next);
+			});
+			start = true;
+			return this;
+		}
+		
+		/**
+		 * 
+		 * @param keyword
+		 * @return self
+		 */
+		public PCParser PACCEPT(String name, String... keyword) {
+			if (start) startTokens.addAll(Arrays.asList(keyword));
+			steps.add(tl -> {
+				Token next = tl.next();
+				if (!Arrays.asList(keyword).contains(next.getToken()))
+					throw new ParsingException("Expected one of `"
+							+ Arrays.asList(keyword).stream().collect(Collectors.joining("', `")) + "'", next);
+				setProperty(name, next.getToken());
 			});
 			start = true;
 			return this;
@@ -135,8 +165,39 @@ public class ParserConstructor {
 		 * @return self
 		 */
 		public PCParser OR() {
+			final PCParser parser = this;
 			return this.or = ParserConstructor.this.new PCParser(new ArrayList<>()) {
+				@Override
+				protected void setProperty(String name, Object value) {
+					parser.setProperty(name, value);
+				}
 			};
+		}
+		
+		/**
+		 * Adds node to the step list
+		 * @param sub
+		 * @return self
+		 */
+		public PCParser NODE(String name) {
+			steps.add(tl -> {
+				getParser(name).parse(tl);
+			});
+			return this;
+		}
+		
+		/**
+		 * Adds node to the step list
+		 * @param sub
+		 * @return self
+		 */
+		public PCParser NODE(String propertyName, String nodeName) {
+			steps.add(tl -> {
+				if (properties.get(propertyName) == null)
+					properties.put(propertyName, new ArrayList<>());
+				properties.get(propertyName).add(getParser(nodeName).parse(tl));
+			});
+			return this;
 		}
 		
 		/**
