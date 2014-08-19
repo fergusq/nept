@@ -26,8 +26,6 @@ public class TokenScanner {
 	
 	private String EOF = null;
 	
-	public TokenScanner() {}
-	
 	/**
 	 * Tells the scanner to ignore all instances of this character in the source code
 	 * 
@@ -57,7 +55,7 @@ public class TokenScanner {
 	}
 	
 	/**
-	 * Tells the scanner to ignore all whitespace characters identified by the {@link Character.isWhitespace}. All whitespace characters are ignored by default.
+	 * Tells the scanner to ignore all whitespace characters identified by the {@link Character}.isWhitespace. All whitespace characters are ignored by default.
 	 * 
 	 * @param value true if whitespace is ignored, otherwise false
 	 * @return self
@@ -103,11 +101,11 @@ public class TokenScanner {
 	/**
 	 * Declares all characters of the parameter string as one character operators
 	 * 
-	 * @param operators The operators
+	 * @param operatorString The operators
 	 * @return self
 	 */
-	public TokenScanner addOperators(String operators) {
-		for (char chr : operators.toCharArray())
+	public TokenScanner addOperators(String operatorString) {
+		for (char chr : operatorString.toCharArray())
 			addOperatorRule(""+chr);
 		return this;
 	}
@@ -128,7 +126,7 @@ public class TokenScanner {
 	 * 
 	 * @param file The file
 	 * @return A TokenList
-	 * @throws IOException
+	 * @throws IOException on io error
 	 */
 	public TokenList tokenize(File file) throws IOException {
 		String content = "";

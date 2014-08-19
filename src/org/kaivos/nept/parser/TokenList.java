@@ -2,6 +2,7 @@ package org.kaivos.nept.parser;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A wrapper for a <code>List&lt;Token&gt;</code>
@@ -57,7 +58,7 @@ public class TokenList {
 	/**
 	 * Lookahead
 	 * 
-	 * @param n
+	 * @param n skips n number of elements
 	 * @return The next token
 	 * @throws IndexOutOfBoundsException If no tokens left
 	 */
@@ -78,7 +79,7 @@ public class TokenList {
 	/**
 	 * Lookahead, returns a string
 	 * 
-	 * @param n
+	 * @param n skips n number of elements
 	 * @return The next token
 	 * @throws IndexOutOfBoundsException If no tokens left
 	 */
@@ -108,14 +109,30 @@ public class TokenList {
 	/**
 	 * Accepts a keyword
 	 * 
-	 * @param keyword
+	 * @param keyword The list of acceptable keywords
 	 * @throws ParsingException if unexpected token was encountered
 	 * @throws IndexOutOfBoundsException If no tokens left
 	 */
 	public void accept(String... keyword) throws ParsingException {
 		Token next = next();
 		if (!Arrays.asList(keyword).contains(next.getToken()))
-			throw new ParsingException("Expected `" + keyword + "'", next);
+			throw new ParsingException(expected(keyword), next);
+	}
+	
+	/**
+	 * Returns a string usable in error messages
+	 * 
+	 * @param keyword The keywords
+	 * @return The error string
+	 */
+	public static String expected(String... keyword) {
+		if (keyword.length == 1)
+			return "Expected `" + keyword[0] + "'";
+		return "Expected one of `"
+				+ Arrays.asList(keyword).stream()
+					.limit(keyword.length-1)
+					.collect(Collectors.joining("', `"))
+				+ "' or `" + keyword[0] + "'";
 	}
 	
 	/**

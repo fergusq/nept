@@ -19,6 +19,11 @@ public class OperatorLibrary<E> {
 	private Supplier<E> defaultRhsParser;
 	private int level = 0;
 	
+	/**
+	 * The constructor
+	 * 
+	 * @param defaultRhsParser The default RHS parser
+	 */
 	public OperatorLibrary(Supplier<E> defaultRhsParser) {
 		this.defaultRhsParser = defaultRhsParser;
 	}
@@ -27,7 +32,6 @@ public class OperatorLibrary<E> {
 	 * Adds a new operator to the current precedence level
 	 * 
 	 * @param op The operator
-	 * @param rhsParser The right-side parser function
 	 * @param handler The constructor function
 	 */
 	public void add(String op, BinaryOperator<E> handler) {
@@ -38,6 +42,7 @@ public class OperatorLibrary<E> {
 	 * Adds a new operator to the current precedence level
 	 * 
 	 * @param op The operator
+	 * @param rhsParser The right-side parser function
 	 * @param handler The constructor function
 	 */
 	public void add(String op, Supplier<E> rhsParser, BinaryOperator<E> handler) {
@@ -48,24 +53,24 @@ public class OperatorLibrary<E> {
 	 * Adds a new operator
 	 * 
 	 * @param op The operator
-	 * @param level The precedence level
+	 * @param precedenceLevel The precedence level
 	 * @param handler The constructor function
 	 */
-	public void add(String op, int level, BinaryOperator<E> handler) {
-		add(op, level, defaultRhsParser, handler);
+	public void add(String op, int precedenceLevel, BinaryOperator<E> handler) {
+		add(op, precedenceLevel, defaultRhsParser, handler);
 	}
 	
 	/**
 	 * Adds a new operator
 	 * 
 	 * @param op The operator
-	 * @param level The precedence level
+	 * @param precedenceLevel The precedence level
 	 * @param rhsParser The right-side parser function
 	 * @param handler The constructor function
 	 */
-	public void add(String op, int level, Supplier<E> rhsParser, BinaryOperator<E> handler) {
+	public void add(String op, int precedenceLevel, Supplier<E> rhsParser, BinaryOperator<E> handler) {
 		constructors.put(op, handler);
-		precedence.put(op, level);
+		precedence.put(op, precedenceLevel);
 		rhsParsers.put(op, rhsParser);
 	}
 	
@@ -90,8 +95,8 @@ public class OperatorLibrary<E> {
 	 * Applies the constructor function of the operator with a and b
 	 * 
 	 * @param op The operator
-	 * @param a
-	 * @param b
+	 * @param a The a operand
+	 * @param b The b operand
 	 * @return The return value of the constructor function
 	 */
 	public E construct(String op, E a, E b) {
@@ -115,7 +120,7 @@ public class OperatorLibrary<E> {
 	 * @return The syntax tree object of the right side
 	 */
 	public E parseRhs(String op) {
-		return rhsParsers.get(op).get();
+		return getRhsParser(op).get();
 	}
 	
 	/**
@@ -125,6 +130,8 @@ public class OperatorLibrary<E> {
 	 * @return The parser
 	 */
 	public Supplier<E> getRhsParser(String op) {
+		if (op == null)
+			return defaultRhsParser;
 		return rhsParsers.get(op);
 	}
 }

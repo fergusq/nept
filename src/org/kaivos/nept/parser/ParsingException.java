@@ -1,5 +1,11 @@
 package org.kaivos.nept.parser;
 
+/**
+ * Represents a syntax error
+ * 
+ * @author Iikka Hauhio
+ *
+ */
 public class ParsingException extends RuntimeException {
 
 	/**
@@ -10,6 +16,12 @@ public class ParsingException extends RuntimeException {
 	String message;
 	Token token;
 	
+	/**
+	 * The default constructor
+	 * 
+	 * @param message The message
+	 * @param token The erronous token
+	 */
 	public ParsingException(String message, Token token) {
 		this.message = message;
 		this.token = token;

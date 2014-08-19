@@ -9,11 +9,19 @@ import org.kaivos.nept.parser.OperatorPrecedenceParser;
 import org.kaivos.nept.parser.TokenList;
 import org.kaivos.nept.parser.TokenScanner;
 
+/**
+ * An example program demonstrating the usage of the operator precedence parser
+ * 
+ * @author Iikka Hauhio
+ *
+ */
 public class OPPExample {
 
 	/**
-	 * @param args
-	 * @throws IOException 
+	 * The main method
+	 * 
+	 * @param args The arguments
+	 * @throws IOException sometimes
 	 */
 	public static void main(String[] args) throws IOException {
 		TokenScanner t = new TokenScanner()
@@ -29,12 +37,23 @@ public class OPPExample {
 		}
 	}
 	
+	/**
+	 * The calculator
+	 * 
+	 * @author Iikka Hauhio
+	 *
+	 */
 	public static class Calculator {
 	
 		private OperatorLibrary<Integer> library;
 		private OperatorPrecedenceParser<Integer> opparser;
 		private TokenList tokenlist;
 		
+		/**
+		 * The constructor
+		 * 
+		 * @param tl TokenList
+		 */
 		public Calculator(TokenList tl) {
 			this.tokenlist = tl;
 			
@@ -52,12 +71,17 @@ public class OPPExample {
 			opparser = new OperatorPrecedenceParser<>(library);
 		}
 		
+		/**
+		 * Parses an expression from the token list
+		 * 
+		 * @return the value of the expression
+		 */
 		public int parse() {
 			return parseExpression(tokenlist);
 		}
 		
 		private int parseExpression(TokenList tl) {
-			return opparser.parse(tl, parsePrimary(tl));
+			return opparser.parse(tl);
 		}
 		
 		private int parsePrimary(TokenList tl) {
