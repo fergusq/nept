@@ -30,16 +30,16 @@ public class ParserConstructorExample {
 	
 		ParserConstructor pc = new ParserConstructor();
 		
-		PCParser primary = pc.node("Primary")
+		pc.node("Primary")
 				.ACCEPT("(").NODE("expr", "Expression").ACCEPT(")")
 				.OR().ACCEPT("-").NODE("neg", "Primary")
 				.OR().PROCESS("number", Integer::parseInt);
 		
-		PCParser term = pc.node("Term")
-				.SUB(primary).MANY(pc.node().PACCEPT("op", "*", "/").NODE("operand", "Primary"));
+		pc.node("Term")
+				.NODE("operand", "Primary").MANY(pc.node().PACCEPT("op", "*", "/").NODE("operand", "Primary"));
 		
 		PCParser expression = pc.node("Expression")
-				.SUB(term).MANY(pc.node().PACCEPT("op", "+", "-").NODE("operand", "Term"));
+				.NODE("operand", "Term").MANY(pc.node().PACCEPT("op", "+", "-").NODE("operand", "Term"));
 		
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		String line = "";
