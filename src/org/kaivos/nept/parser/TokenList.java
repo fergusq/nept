@@ -110,13 +110,15 @@ public class TokenList {
 	 * Accepts a keyword
 	 * 
 	 * @param keyword The list of acceptable keywords
+	 * @return The accepted keyword
 	 * @throws ParsingException if unexpected token was encountered
 	 * @throws IndexOutOfBoundsException If no tokens left
 	 */
-	public void accept(String... keyword) throws ParsingException {
+	public Token accept(String... keyword) throws ParsingException {
 		Token next = next();
 		if (!Arrays.asList(keyword).contains(next.getToken()))
 			throw new ParsingException(expected(keyword), next);
+		return next;
 	}
 	
 	/**
