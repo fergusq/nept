@@ -27,6 +27,7 @@ public class OPPExample {
 		TokenScanner t = new TokenScanner()
 			.addOperators("+-*/%()[]")
 			.separateIdentifiersAndPunctuation(false)
+			.addCommentRule("/*", "*/")
 			.appendOnEOF("<EOF>");
 		
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));

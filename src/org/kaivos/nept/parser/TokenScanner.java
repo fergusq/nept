@@ -16,12 +16,58 @@ import java.util.regex.Pattern;
  */
 public class TokenScanner {
 	
+	private static class Pair<T> {
+		private final T a;
+		private final T b;
+		
+		public Pair(T a, T b) {
+			super();
+			this.a = a;
+			this.b = b;
+		}
+
+		public T getA() {
+			return a;
+		}
+
+		public T getB() {
+			return b;
+		}
+	}
+	
+	private static class Trair<T> {
+		private final T a;
+		private final T b;
+		private final T c;
+		
+		public Trair(T a, T b, T c) {
+			super();
+			this.a = a;
+			this.b = b;
+			this.c = c;
+		}
+
+		public T getA() {
+			return a;
+		}
+
+		public T getB() {
+			return b;
+		}
+		
+		public T getC() {
+			return c;
+		}
+	}
+	
 	private ArrayList<Character> ignore = new ArrayList<>();
 	private ArrayList<Character> dontIgnore = new ArrayList<>();
+	private ArrayList<Pair<String>> ignoreBlocks = new ArrayList<>();
 	private boolean ignoreWhitespace = true;
 	
 	private ArrayList<Pattern> patterns = new ArrayList<>();
 	private ArrayList<String> operators = new ArrayList<>();
+	private ArrayList<Trair<Character>> stringBlocks = new ArrayList<>();
 	private boolean allPunctuation = true;
 	
 	private String EOF = null;
@@ -99,6 +145,31 @@ public class TokenScanner {
 	}
 	
 	/**
+	 * Decalres a new string rule
+	 * 
+	 * @param start The start character
+	 * @param end The end character
+	 * @param escape The escape character
+	 * @return self
+	 */
+	public TokenScanner addStringRule(char start, char end, char escape) {
+		stringBlocks.add(new Trair<>(start, end, escape));
+		return this;
+	}
+	
+	/**
+	 * Decalres a new comment rule, tells the scanner to ignore all characters between start and end tokens
+	 * 
+	 * @param start The start token
+	 * @param end The end token
+	 * @return self
+	 */
+	public TokenScanner addCommentRule(String start, String end) {
+		ignoreBlocks.add(new Pair<>(start, end));
+		return this;
+	}
+	
+	/**
 	 * Declares all characters of the parameter string as one character operators
 	 * 
 	 * @param operatorString The operators
@@ -164,7 +235,26 @@ public class TokenScanner {
 				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 				continue;
 			}
+			
 			String future = source.substring(i);
+			
+			for (Pair<String> block : ignoreBlocks) {
+				String op = block.getA();
+				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
+					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+					
+					op = block.getB();
+					while (true) if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
+						if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+						i = i + op.length()-1;
+						continue outer;
+					} else {
+						future = source.substring(++i);
+						if (source.charAt(i)=='\n') line++;
+					}
+				}
+			}
+			
 			for (String op : operators) {
 				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
@@ -180,6 +270,37 @@ public class TokenScanner {
 					tokens.add(new Token(source.substring(i, i+m.end()), file, line));
 					i = i+m.end()-1;
 					continue outer;
+				}
+			}
+			
+			for (Trair<Character> block : stringBlocks) {
+				Character op = block.getA();
+				if (future.length() >= 1 && future.charAt(0) == op) {
+					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+					
+					String str = "\"";
+					
+					op = block.getB();
+					while (true) {
+						if (future.length() >= 1 && future.charAt(0) == block.getC()) {
+							if (future.length() >= 2 && future.charAt(1) == op) {
+								str += op;
+								future = source.substring(++i);
+								if (source.charAt(i)=='\n') line++;
+								str += future.charAt(0);
+							} else continue;
+						}
+						if (future.length() >= 1 && future.charAt(0) == op) {
+							if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+							str += "\"";
+							tokens.add(new Token(str, file, line));
+							continue outer;
+						} else {
+							future = source.substring(++i);
+							if (source.charAt(i)=='\n') line++;
+							str += future.charAt(0);
+						}
+					}
 				}
 			}
 			
