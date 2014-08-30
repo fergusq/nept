@@ -292,7 +292,6 @@ public class TokenScanner {
 						if (future.length() >= 1 && future.charAt(0) == block.getB()) {
 							str += block.getB();
 							tokens.add(new Token(str, file, line));
-							System.err.println(str);
 							continue outer;
 						} else if (future.length() >= 1) {
 							str += future.charAt(0);
