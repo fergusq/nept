@@ -245,12 +245,11 @@ public class TokenScanner {
 					
 					op = block.getB();
 					while (true) if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
-						if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 						i = i + op.length()-1;
 						continue outer;
 					} else {
 						future = source.substring(++i);
-						if (source.charAt(i)=='\n') line++;
+						if (source.length() > i && source.charAt(i)=='\n') line++;
 					}
 				}
 			}
@@ -274,31 +273,31 @@ public class TokenScanner {
 			}
 			
 			for (Trair<Character> block : stringBlocks) {
-				Character op = block.getA();
-				if (future.length() >= 1 && future.charAt(0) == op) {
+				if (future.length() >= 1 && future.charAt(0) == block.getA()) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 					
-					String str = "\"";
+					String str = ""+block.getA();
 					
-					op = block.getB();
 					while (true) {
+						future = source.substring(++i);
+						if (source.length() > i && source.charAt(i)=='\n') line++;
+						
 						if (future.length() >= 1 && future.charAt(0) == block.getC()) {
-							if (future.length() >= 2 && future.charAt(1) == op) {
-								str += op;
-								future = source.substring(++i);
-								if (source.charAt(i)=='\n') line++;
-								str += future.charAt(0);
-							} else continue;
+							if (future.length() >= 2 && future.charAt(1) == block.getB()) {
+								str += block.getB();
+								i++;
+								continue;
+							};
 						}
-						if (future.length() >= 1 && future.charAt(0) == op) {
-							if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-							str += "\"";
+						if (future.length() >= 1 && future.charAt(0) == block.getB()) {
+							str += block.getB();
 							tokens.add(new Token(str, file, line));
+							System.err.println(str);
 							continue outer;
-						} else {
-							future = source.substring(++i);
-							if (source.charAt(i)=='\n') line++;
+						} else if (future.length() >= 1) {
 							str += future.charAt(0);
+						} else {
+							throw new ParsingException("Unexpected EOF in the middle of string constant", new Token(EOF, file, line));
 						}
 					}
 				}
