@@ -276,7 +276,8 @@ public class TokenScanner {
 				if (future.length() >= 1 && future.charAt(0) == block.getA()) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 					
-					String str = ""+block.getA();
+					String str = "";
+					tokens.add(new Token(block.getA()+"", file, line));
 					
 					while (true) {
 						future = source.substring(++i);
@@ -290,8 +291,8 @@ public class TokenScanner {
 							};
 						}
 						if (future.length() >= 1 && future.charAt(0) == block.getB()) {
-							str += block.getB();
 							tokens.add(new Token(str, file, line));
+							tokens.add(new Token(block.getB()+"", file, line));
 							continue outer;
 						} else if (future.length() >= 1) {
 							str += future.charAt(0);
