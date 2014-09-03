@@ -124,9 +124,9 @@ public class OperatorLibrary<E> {
 	}
 	
 	/**
-	 * Returns the RHS parser of the operator
+	 * Returns the RHS parser of the operator or the default RHS parser if the supplied operator is null
 	 * 
-	 * @param op The operator
+	 * @param op The operator or null
 	 * @return The parser
 	 */
 	public Supplier<E> getRhsParser(String op) {
