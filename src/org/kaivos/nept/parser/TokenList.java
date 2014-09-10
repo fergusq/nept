@@ -97,6 +97,16 @@ public class TokenList {
 	}
 	
 	/**
+	 * Are there given number of tokens left?
+	 * 
+	 * @param number the number of tokens
+	 * @return <code>true</code> if tokens left, otherwise <code>false</code>
+	 */
+	public boolean has(int number) {
+		return index + number-1 < tokens.size();
+	}
+	
+	/**
 	 * Compares the next token to a keyword
 	 * 
 	 * @param keyword The keyword
