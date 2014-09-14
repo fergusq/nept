@@ -107,13 +107,13 @@ public class TokenList {
 	}
 	
 	/**
-	 * Compares the next token to a keyword
+	 * Compares the next token to some keywords
 	 * 
-	 * @param keyword The keyword
+	 * @param keyword The keyword(s)
 	 * @return <code>true</code> or <code>false</code>
 	 */
-	public boolean isNext(String keyword) {
-		return hasNext() ? seek().getToken().equals(keyword) : false;
+	public boolean isNext(String... keyword) {
+		return hasNext() ? Arrays.asList(keyword).contains(seek().getToken()) : false;
 	}
 	
 	/**
