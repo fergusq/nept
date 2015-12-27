@@ -69,6 +69,7 @@ public class TokenScanner {
 	private ArrayList<Pattern> patterns = new ArrayList<>();
 	private ArrayList<String> operators = new ArrayList<>();
 	private ArrayList<Trair<Character>> stringBlocks = new ArrayList<>();
+	private ArrayList<Pair<Character>> escapeCodes = new ArrayList<>();
 	private boolean allPunctuation = true;
 	
 	private String EOF = null;
@@ -157,9 +158,21 @@ public class TokenScanner {
 		stringBlocks.add(new Trair<>(start, end, escape));
 		return this;
 	}
+
+	/**
+	 * Declares a new escape code rule to be used in string literals
+	 *
+	 * @param code The character used as a part of the escape code
+	 * @param replacement The character to which the escape code expands
+	 * @return self
+	 */
+	public TokenScanner addEscapeCode(char code, char replacement) {
+		escapeCodes.add(new Pair<>(code, replacement));
+		return this;
+	}
 	
 	/**
-	 * Decalres a new comment rule, tells the scanner to ignore all characters between start and end tokens
+	 * Declares a new comment rule, tells the scanner to ignore all characters between start and end tokens
 	 * 
 	 * @param start The start token
 	 * @param end The end token
@@ -289,7 +302,7 @@ public class TokenScanner {
 					String str = "";
 					tokens.add(new Token(block.getA()+"", file, line));
 					
-					while (true) {
+					stringLoop: while (true) {
 						future = source.substring(++i);
 						if (source.length() > i && source.charAt(i)=='\n') line++;
 						
@@ -298,7 +311,17 @@ public class TokenScanner {
 								str += block.getB();
 								i++;
 								continue;
-							};
+							}
+							else if (future.length() >= 2) {
+								for (Pair<Character> escapeCode : escapeCodes) {
+									if (future.charAt(1) == escapeCode.getA()) {
+										str += escapeCode.getB();
+										i++;
+										continue stringLoop;
+									}
+								}
+								throw new ParsingException("Invalid escape sequence '" + block.getC() + future.charAt(1) + "'", new Token(block.getA()+str, file, line));
+							}
 						}
 						if (future.length() >= 1 && future.charAt(0) == block.getB()) {
 							tokens.add(new Token(str, file, line));
