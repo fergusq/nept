@@ -69,7 +69,7 @@ public class OPPExample {
 			library.add("/", (a, b) -> a / b);
 			
 			/* Declares the OPP*/
-			opparser = new OperatorPrecedenceParser<>(library);
+			opparser = OperatorPrecedenceParser.fromLibrary(library);
 		}
 		
 		/**
@@ -86,8 +86,10 @@ public class OPPExample {
 		}
 		
 		private int parsePrimary(TokenList tl) {
-			if (tl.isNext("-"))
+			if (tl.isNext("-")) {
+				tl.accept("-");
 				return -parsePrimary(tl);
+			}
 			if (tl.isNext("(")) {
 				tl.accept("(");
 				int i = parseExpression(tl);

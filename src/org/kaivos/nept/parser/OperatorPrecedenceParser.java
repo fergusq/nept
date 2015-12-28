@@ -14,8 +14,10 @@ import java.util.function.Supplier;
 public class OperatorPrecedenceParser<E> implements Parser<E> {
 
 	Function<String, Integer> getPrecedenceLevel;
-	Function<String, Supplier<E>> parsePrimary;
+	Function<String, Function<TokenList, E>> parsePrimary;
 	Function<String, BinaryOperator<E>> construct;
+
+	private OperatorPrecedenceParser() {}
 	
 	/**
 	 * All customizations available
@@ -23,11 +25,14 @@ public class OperatorPrecedenceParser<E> implements Parser<E> {
 	 * @param pl Should return the precedence level of the operator
 	 * @param primaryParser Returns the RHS parser of the operator if applied with a string, otherwise the LHS parser
 	 * @param constructor Should return the constructor function of the operator
+	 * @return the new parser
 	 */
-	public OperatorPrecedenceParser(Function<String, Integer> pl, Function<String, Supplier<E>> primaryParser, Function<String, BinaryOperator<E>> constructor) {
-		getPrecedenceLevel = pl;
-		construct = constructor;
-		parsePrimary = primaryParser;
+	public static<E> OperatorPrecedenceParser<E> newCustomizedParser(Function<String, Integer> pl, Function<String, Function<TokenList, E>> primaryParser, Function<String, BinaryOperator<E>> constructor) {
+		OperatorPrecedenceParser parser = new OperatorPrecedenceParser();
+		parser.getPrecedenceLevel = pl;
+		parser.construct = constructor;
+		parser.parsePrimary = primaryParser;
+		return parser;
 	}
 	
 	/**
@@ -36,20 +41,24 @@ public class OperatorPrecedenceParser<E> implements Parser<E> {
 	 * @param pl Should return the precedence level of the operator
 	 * @param constructor Should return the constructor function of the operator
 	 * @param primaryParser The primary parser
+	 * @return the new parser
 	 */
-	public OperatorPrecedenceParser(Function<String, Integer> pl, Function<String, BinaryOperator<E>> constructor, Supplier<E> primaryParser) {
-		getPrecedenceLevel = pl;
-		construct = constructor;
-		parsePrimary = str -> () -> primaryParser.get();
+	public static<E> OperatorPrecedenceParser<E> newBasicRHSParser(Function<String, Integer> pl, Function<String, BinaryOperator<E>> constructor, Function<TokenList, E> primaryParser) {
+		OperatorPrecedenceParser parser = new OperatorPrecedenceParser();
+		parser.getPrecedenceLevel = pl;
+		parser.construct = constructor;
+		parser.parsePrimary = str -> primaryParser;
+		return parser;
 	}
 	
 	/**
 	 * Loads required functions from the operator library
 	 * 
 	 * @param library The library
+	 * @return the new parser
 	 */
-	public OperatorPrecedenceParser(OperatorLibrary<E> library) {
-		this(
+	public static<E> OperatorPrecedenceParser<E> fromLibrary(OperatorLibrary<E> library) {
+		return newCustomizedParser(
 				library::getPrecedence,
 				library::getRhsParser,
 				library::getConstructor
@@ -58,7 +67,7 @@ public class OperatorPrecedenceParser<E> implements Parser<E> {
 	
 	@Override
 	public E parse(TokenList tl) throws ParsingException {
-		return parse(tl, parsePrimary.apply(null).get());
+		return parse(tl, parsePrimary.apply(null).apply(tl));
 	}
 	
 	/**
@@ -79,7 +88,7 @@ public class OperatorPrecedenceParser<E> implements Parser<E> {
 		while ((oplevel=getPrecedenceLevel.apply(tl.seekString())) >= 0
 				&& oplevel >= level) {
 			String op = tl.nextString();
-			E rhs = parsePrimary.apply(op).get();
+			E rhs = parsePrimary.apply(op).apply(tl);
 			while (getPrecedenceLevel.apply(tl.seek().getToken()) > oplevel) {
 				rhs = _parse(tl, rhs, getPrecedenceLevel.apply(tl.seekString()));
 			}

@@ -3,6 +3,7 @@ package org.kaivos.nept.parser;
 import java.util.HashMap;
 import java.util.function.BinaryOperator;
 import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * A database for operators
@@ -15,8 +16,8 @@ public class OperatorLibrary<E> {
 
 	private HashMap<String, BinaryOperator<E>> constructors = new HashMap<>();
 	private HashMap<String, Integer> precedence = new HashMap<>();
-	private HashMap<String, Supplier<E>> rhsParsers = new HashMap<>();
-	private Supplier<E> defaultRhsParser;
+	private HashMap<String, Function<TokenList, E>> rhsParsers = new HashMap<>();
+	private Function<TokenList, E> defaultRhsParser;
 	private int level = 0;
 	
 	/**
@@ -25,6 +26,15 @@ public class OperatorLibrary<E> {
 	 * @param defaultRhsParser The default RHS parser
 	 */
 	public OperatorLibrary(Supplier<E> defaultRhsParser) {
+		this.defaultRhsParser = tl -> defaultRhsParser.get();
+	}
+
+	/**
+	 * The constructor
+	 * 
+	 * @param defaultRhsParser The default RHS parser
+	 */
+	public OperatorLibrary(Function<TokenList, E> defaultRhsParser) {
 		this.defaultRhsParser = defaultRhsParser;
 	}
 	
@@ -46,6 +56,17 @@ public class OperatorLibrary<E> {
 	 * @param handler The constructor function
 	 */
 	public void add(String op, Supplier<E> rhsParser, BinaryOperator<E> handler) {
+		add(op, level, tl -> rhsParser.get(), handler);
+	}
+
+	/**
+	 * Adds a new operator to the current precedence level
+	 * 
+	 * @param op The operator
+	 * @param rhsParser The right-side parser function
+	 * @param handler The constructor function
+	 */
+	public void add(String op, Function<TokenList, E> rhsParser, BinaryOperator<E> handler) {
 		add(op, level, rhsParser, handler);
 	}
 	
@@ -69,6 +90,20 @@ public class OperatorLibrary<E> {
 	 * @param handler The constructor function
 	 */
 	public void add(String op, int precedenceLevel, Supplier<E> rhsParser, BinaryOperator<E> handler) {
+		constructors.put(op, handler);
+		precedence.put(op, precedenceLevel);
+		rhsParsers.put(op, tl -> rhsParser.get());
+	}
+
+	/**
+	 * Adds a new operator
+	 * 
+	 * @param op The operator
+	 * @param precedenceLevel The precedence level
+	 * @param rhsParser The right-side parser function
+	 * @param handler The constructor function
+	 */
+	public void add(String op, int precedenceLevel, Function<TokenList, E> rhsParser, BinaryOperator<E> handler) {
 		constructors.put(op, handler);
 		precedence.put(op, precedenceLevel);
 		rhsParsers.put(op, rhsParser);
@@ -119,8 +154,8 @@ public class OperatorLibrary<E> {
 	 * @param op The operator
 	 * @return The syntax tree object of the right side
 	 */
-	public E parseRhs(String op) {
-		return getRhsParser(op).get();
+	public E parseRhs(TokenList tl, String op) {
+		return getRhsParser(op).apply(tl);
 	}
 	
 	/**
@@ -129,7 +164,7 @@ public class OperatorLibrary<E> {
 	 * @param op The operator or null
 	 * @return The parser
 	 */
-	public Supplier<E> getRhsParser(String op) {
+	public Function<TokenList, E> getRhsParser(String op) {
 		if (op == null)
 			return defaultRhsParser;
 		return rhsParsers.get(op);
