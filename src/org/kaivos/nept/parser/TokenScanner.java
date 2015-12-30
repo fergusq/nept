@@ -17,11 +17,11 @@ import java.util.regex.Pattern;
  */
 public class TokenScanner {
 	
-	private static class Pair<T> {
+	private static class Pair<T, U> {
 		private final T a;
-		private final T b;
+		private final U b;
 		
-		public Pair(T a, T b) {
+		public Pair(T a, U b) {
 			super();
 			this.a = a;
 			this.b = b;
@@ -31,17 +31,17 @@ public class TokenScanner {
 			return a;
 		}
 
-		public T getB() {
+		public U getB() {
 			return b;
 		}
 	}
 	
-	private static class Trair<T> {
+	private static class Trair<T, U, V> {
 		private final T a;
-		private final T b;
-		private final T c;
+		private final U b;
+		private final V c;
 		
-		public Trair(T a, T b, T c) {
+		public Trair(T a, U b, V c) {
 			super();
 			this.a = a;
 			this.b = b;
@@ -52,24 +52,25 @@ public class TokenScanner {
 			return a;
 		}
 
-		public T getB() {
+		public U getB() {
 			return b;
 		}
 		
-		public T getC() {
+		public V getC() {
 			return c;
 		}
 	}
 	
 	private ArrayList<Character> ignore = new ArrayList<>();
 	private ArrayList<Character> dontIgnore = new ArrayList<>();
-	private ArrayList<Pair<String>> ignoreBlocks = new ArrayList<>();
+	private ArrayList<Pair<String, String>> ignoreBlocks = new ArrayList<>();
 	private boolean ignoreWhitespace = true;
 	
 	private ArrayList<Pattern> patterns = new ArrayList<>();
 	private ArrayList<String> operators = new ArrayList<>();
-	private ArrayList<Trair<Character>> stringBlocks = new ArrayList<>();
-	private ArrayList<Pair<Character>> escapeCodes = new ArrayList<>();
+	private ArrayList<Trair<Character, Character, Character>> stringBlocks = new ArrayList<>();
+	private ArrayList<Pair<Character, String>> escapeCodes = new ArrayList<>();
+	private ArrayList<Trair<Character, Integer, Integer>> charEscapeCodes = new ArrayList<>();
 	private boolean allPunctuation = true;
 	
 	private String EOF = null;
@@ -166,8 +167,23 @@ public class TokenScanner {
 	 * @param replacement The character to which the escape code expands
 	 * @return self
 	 */
-	public TokenScanner addEscapeCode(char code, char replacement) {
+	public TokenScanner addEscapeCode(char code, String replacement) {
 		escapeCodes.add(new Pair<>(code, replacement));
+		return this;
+	}
+
+	/**
+	 * Declares a new escape code rule to be used in string literals
+	 *
+	 * A character escape code is of form \xNNNN. You can specify the
+	 * start character x and the number of hexadecimal digits
+	 *
+	 * @param code The character used as a part of the escape code
+	 * @param replacement The character to which the escape code expands
+	 * @return self
+	 */
+	public TokenScanner addCharacterEscapeCode(char code, int numberOfDigits, int radix) {
+		charEscapeCodes.add(new Trair<>(code, numberOfDigits, radix));
 		return this;
 	}
 	
@@ -261,7 +277,7 @@ public class TokenScanner {
 			
 			String future = source.substring(i);
 			
-			for (Pair<String> block : ignoreBlocks) {
+			for (Pair<String, String> block : ignoreBlocks) {
 				String op = block.getA();
 				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
@@ -295,7 +311,7 @@ public class TokenScanner {
 				}
 			}
 			
-			for (Trair<Character> block : stringBlocks) {
+			for (Trair<Character, Character, Character> block : stringBlocks) {
 				if (future.length() >= 1 && future.charAt(0) == block.getA()) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 					
@@ -313,9 +329,21 @@ public class TokenScanner {
 								continue;
 							}
 							else if (future.length() >= 2) {
-								for (Pair<Character> escapeCode : escapeCodes) {
+								for (Pair<Character, String> escapeCode : escapeCodes) {
 									if (future.charAt(1) == escapeCode.getA()) {
 										str += escapeCode.getB();
+										i++;
+										continue stringLoop;
+									}
+								}
+								for (Trair<Character, Integer, Integer> escapeCode : charEscapeCodes) {
+									if (future.charAt(1) == escapeCode.getA()) {
+										String characterCode = "";
+										for (int j = 2; j < escapeCode.getB()+2; j++) {
+											characterCode += future.charAt(j);
+											i++;
+										}
+										str += (char) Integer.parseInt(characterCode, escapeCode.getC());
 										i++;
 										continue stringLoop;
 									}
