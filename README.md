@@ -59,7 +59,7 @@ To make it easier to implement a short parser for a programming language, Nept i
 
 ```java
 /* Declares the operator library – all operators use parsePrimary() as their RHS parser */
-OperatorLibrary<Integer> library = new OperatorLibrary<>(() -> parsePrimary(tl));
+OperatorLibrary<Integer> library = new OperatorLibrary<>(tl -> parsePrimary(tl));
 			
 /* Declares the operators*/
 library.add("+", (a, b) -> a + b);
