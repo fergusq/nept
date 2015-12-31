@@ -247,7 +247,7 @@ public class TokenScanner {
 		
 		return tokenize(content, file.getName());
 	}
-	
+
 	/**
 	 * Reads tokens
 	 * 
@@ -256,9 +256,21 @@ public class TokenScanner {
 	 * @return A TokenList
 	 */
 	public TokenList tokenize(String source, String file) {
+		return tokenize(source, file, 1);
+	}
+	
+	/**
+	 * Reads tokens
+	 * 
+	 * @param source The string
+	 * @param file The name of the file or stream
+	 * @param line The line number of source in the original file
+	 * @return A TokenList
+	 */
+	public TokenList tokenize(String source, String file, int firstLine) {
 		ArrayList<Token> tokens = new ArrayList<Token>();
 		
-		int line = 0;
+		int line = firstLine-1;
 		String currToken = "";
 		
 		int i = -1;
