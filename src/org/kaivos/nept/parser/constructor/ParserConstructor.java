@@ -18,17 +18,24 @@ import org.kaivos.nept.parser.TokenList;
 
 import static org.kaivos.nept.parser.TokenList.expected;
 
+/*
+ * TODO OR(converter) ei toimi 
+ * 
+ */
+
 /**
  * Constructs a parser TODO UNDER CONSTRUCTION
+ * 
+ * @param <T> The type of the syntax tree object
  * 
  * @author Iikka Hauhio
  *
  */
-public class ParserConstructor {
+public class ParserConstructor<T> {
 	
 	private HashMap<String, PCParser> nodes = new HashMap<>();
 	
-	static void put(Map<String, List<Object>> map, String name, Object value) {
+	private static <T> void put(Map<String, List<T>> map, String name, T value) {
 		if (map.get(name) == null) map.put(name, new ArrayList<>());
 		map.get(name).add(value);
 	}
@@ -39,38 +46,53 @@ public class ParserConstructor {
 	 * @author Iikka Hauhio
 	 *
 	 */
-	public class PCParser implements Parser<Map<String, List<Object>>>, ParsingStep {	
-		private List<ParsingStep> steps = new ArrayList<>();
+	public class PCParser implements Parser<Map<String, List<T>>>, ParsingStep<T> {	
+		private List<ParsingStep<T>> steps = new ArrayList<>();
 		private Set<String> startTokens = new HashSet<String>();
 		private boolean start = true;
 		
 		private PCParser or = null;
 		
+		private Function<Map<String, List<T>>, T> converter;
+		
 		/**
 		 * Initializes an empty PCParser
+		 * @param converter The function used to convert a property map to it's real syntax tree form
 		 */
-		public PCParser() {
+		public PCParser(Function<Map<String, List<T>>, T> converter) {
 			this.steps = new ArrayList<>();
+			this.converter = converter;
 		}
 		
 		@Override
-		public Map<String, List<Object>> parse(TokenList tl) throws ParsingException {
-			Map<String, List<Object>> properties = new HashMap<>();
+		public Map<String, List<T>> parse(TokenList tl) throws ParsingException {
+			Map<String, List<T>> properties = new HashMap<>();
 			parseStep(tl, properties);
 			return properties;
 		}
 		
 		@Override
-		public void parseStep(TokenList tl, Map<String, List<Object>> values) throws ParsingException {
+		public void parseStep(TokenList tl, Map<String, List<T>> values) throws ParsingException {
 			if (or != null) {
 				if (!startTokens.contains(tl.seekString()) || or.startTokens.contains(tl.seekString())) {
 					or.parseStep(tl, values);
 					return;
 				}
 			}
-			for (ParsingStep step : steps) {
+			for (ParsingStep<T> step : steps) {
 				step.parseStep(tl, values);
 			}
+		}
+		
+		/**
+		 * Parser to a syntax tree
+		 * 
+		 * @param tl The token list
+		 * @return The syntax tree
+		 * @throws ParsingException on case of syntax error
+		 */
+		public T parseTree(TokenList tl) throws ParsingException {
+			return this.converter.apply(this.parse(tl));
 		}
 		
 		private Set<String> getStartTokens() {
@@ -101,16 +123,17 @@ public class ParserConstructor {
 		 * Accepts a keyword and stores it to the properties
 		 *
 		 * @param name The name of the property
+		 * @param stringConverter A Function converting token to it's syntax tree form
 		 * @param keyword List of acceptable keywords
 		 * @return self
 		 */
-		public PCParser PACCEPT(String name, String... keyword) {
+		public PCParser PACCEPT(String name, Function<String, T> stringConverter, String... keyword) {
 			if (start) startTokens.addAll(Arrays.asList(keyword));
 			steps.add((tl, values) -> {
 				Token next = tl.next();
 				if (!Arrays.asList(keyword).contains(next.getToken()))
 					throw new ParsingException(expected(keyword), next);
-				put(values, name, next.getToken());
+				put(values, name, stringConverter.apply(next.getToken()));
 			});
 			start = true;
 			return this;
@@ -190,12 +213,22 @@ public class ParserConstructor {
 		}
 		
 		/**
-		 * OR Operator
+		 * OR Operator (both sides use same converter function)
 		 * 
 		 * @return self
 		 */
 		public PCParser OR() {
-			return this.or = ParserConstructor.this.new PCParser();
+			return this.or = ParserConstructor.this.new PCParser(this.converter);
+		}
+		
+		/**
+		 * OR Operator (both sides use different converter)
+		 * @param rightSideConverter the converter of the right side
+		 * 
+		 * @return self
+		 */
+		public PCParser OR(Function<Map<String, List<T>>, T> rightSideConverter) {
+			return this.or = ParserConstructor.this.new PCParser(rightSideConverter);
 		}
 		
 		/**
@@ -219,7 +252,7 @@ public class ParserConstructor {
 		 */
 		public PCParser NODE(String propertyName, String nodeName) {
 			steps.add((tl, values) -> {
-				put(values, propertyName, getNode(nodeName).parse(tl));
+				put(values, propertyName, getNode(nodeName).converter.apply(getNode(nodeName).parse(tl)));
 			});
 			return this;
 		}
@@ -231,7 +264,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser IF(String keyword, ParsingStep sub) {
+		public PCParser IF(String keyword, ParsingStep<T> sub) {
 			IF(new String[] { keyword }, sub);
 			return this;
 		}
@@ -243,7 +276,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser IF(String[] keyword, ParsingStep sub) {
+		public PCParser IF(String[] keyword, ParsingStep<T> sub) {
 			steps.add((tl, values) -> {
 				Token next = tl.seek();
 				if (Arrays.asList(keyword).contains(next.getToken()))
@@ -259,7 +292,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser IF(Predicate<TokenList> pred, ParsingStep sub) {
+		public PCParser IF(Predicate<TokenList> pred, ParsingStep<T> sub) {
 			steps.add((tl, values) -> {
 				if (pred.test(tl));
 					sub.parseStep(tl, values);
@@ -274,7 +307,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser WHILE(String keyword, ParsingStep sub) {
+		public PCParser WHILE(String keyword, ParsingStep<T> sub) {
 			WHILE(new String[] { keyword }, sub);
 			return this;
 		}
@@ -286,7 +319,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser WHILE(String[] keyword, ParsingStep sub) {
+		public PCParser WHILE(String[] keyword, ParsingStep<T> sub) {
 			steps.add((tl, values) -> {
 				while (Arrays.asList(keyword).contains(tl.seekString()))
 					sub.parseStep(tl, values);
@@ -301,7 +334,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser WHILE(Predicate<TokenList> pred, ParsingStep sub) {
+		public PCParser WHILE(Predicate<TokenList> pred, ParsingStep<T> sub) {
 			steps.add((tl, values) -> {
 				while (pred.test(tl));
 					sub.parseStep(tl, values);
@@ -329,7 +362,7 @@ public class ParserConstructor {
 		 * @param processor The processor
 		 * @return self
 		 */
-		public PCParser PROCESS(String name, Function<String, Object> processor) {
+		public PCParser PROCESS(String name, Function<String, T> processor) {
 			steps.add((tl, values) -> {
 				put(values, name, processor.apply(tl.next().getToken()));
 			});
@@ -342,7 +375,7 @@ public class ParserConstructor {
 		 * @param sub The subnode
 		 * @return self
 		 */
-		public PCParser SUB(ParsingStep sub) {
+		public PCParser SUB(ParsingStep<T> sub) {
 			steps.add(sub);
 			return this;
 		}
@@ -351,10 +384,12 @@ public class ParserConstructor {
 	/**
 	 * A parsing step
 	 * 
+	 * @param <T> The type of the syntax tree object
+	 * 
 	 * @author Iikka Hauhio
 	 *
 	 */
-	public interface ParsingStep {
+	public interface ParsingStep<T> {
 		
 		/**
 		 * Continues to the step
@@ -363,7 +398,7 @@ public class ParserConstructor {
 		 * @param values The property map
 		 * @throws ParsingException on syntax error
 		 */
-		public void parseStep(TokenList tl, Map<String, List<Object>> values) throws ParsingException;
+		public void parseStep(TokenList tl, Map<String, List<T>> values) throws ParsingException;
 	}
 	
 	
@@ -372,8 +407,8 @@ public class ParserConstructor {
 	 * 
 	 * @return a new pc
 	 */
-	public static ParserConstructor npc() {
-		return new ParserConstructor();
+	public static <T> ParserConstructor<T> npc() {
+		return new ParserConstructor<T>();
 	}
 	
 	/**
@@ -387,7 +422,7 @@ public class ParserConstructor {
 	 * @param name The name of the node
 	 * @return the node
 	 */
-	public Parser<Map<String, List<Object>>> getNode(String name) {
+	public PCParser getNode(String name) {
 		return nodes.get(name);
 	}
 	
@@ -395,11 +430,12 @@ public class ParserConstructor {
 	 * Adds a new node to the list of the nodes and returns it
 	 * 
 	 * @param name The name of the new node
+	 * @param converter The converter function used to convert the property map to it's right syntax tree form
 	 * @return The node
 	 */
-	public PCParser node(String name) {
+	public PCParser node(String name, Function<Map<String, List<T>>, T> converter) {
 		PCParser p;
-		nodes.put(name, p = new PCParser());
+		nodes.put(name, p = new PCParser(converter));
 		return p;
 	}
 	
@@ -409,7 +445,7 @@ public class ParserConstructor {
 	 * @return the object
 	 */
 	public PCParser node() {
-		return new PCParser();
+		return new PCParser(null);
 	}
 	
 }
