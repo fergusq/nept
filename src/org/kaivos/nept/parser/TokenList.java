@@ -2,6 +2,7 @@ package org.kaivos.nept.parser;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -163,6 +164,14 @@ public class TokenList {
 	public TokenList append(Token token) {
 		tokens.add(token);
 		return this;
+	}
+
+	/**
+	 * Returns the tokens as a List
+	 * @return list
+	 */
+	public List<Token> toList() {
+		return Collections.unmodifiableList(tokens);
 	}
 	
 	@Override
