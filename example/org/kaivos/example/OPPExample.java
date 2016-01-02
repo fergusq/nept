@@ -1,4 +1,4 @@
-package org.kaivos.nept.test;
+package org.kaivos.example;
 
 import java.io.BufferedReader;
 import java.io.IOException;
