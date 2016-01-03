@@ -68,7 +68,7 @@ public class TokenScanner {
 	
 	private ArrayList<Pattern> patterns = new ArrayList<>();
 	private ArrayList<String> operators = new ArrayList<>();
-	private ArrayList<Trair<Character, Character, Character>> stringBlocks = new ArrayList<>();
+	private ArrayList<Trair<String, String, Character>> stringBlocks = new ArrayList<>();
 	private ArrayList<Pair<Character, String>> escapeCodes = new ArrayList<>();
 	private ArrayList<Trair<Character, Integer, Integer>> charEscapeCodes = new ArrayList<>();
 	private boolean allPunctuation = true;
@@ -156,6 +156,19 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner addStringRule(char start, char end, char escape) {
+		stringBlocks.add(new Trair<>(""+start, ""+end, escape));
+		return this;
+	}
+	
+	/**
+	 * Decalres a new string rule
+	 * 
+	 * @param start The start sequence
+	 * @param end The end sequence
+	 * @param escape The escape character
+	 * @return self
+	 */
+	public TokenScanner addStringRule(String start, String end, char escape) {
 		stringBlocks.add(new Trair<>(start, end, escape));
 		return this;
 	}
@@ -323,21 +336,29 @@ public class TokenScanner {
 				}
 			}
 			
-			for (Trair<Character, Character, Character> block : stringBlocks) {
-				if (future.length() >= 1 && future.charAt(0) == block.getA()) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+			for (Trair<String, String, Character> block : stringBlocks) {
+				String startSeq = block.getA();
+				String endSeq = block.getB();
+				char escapeChar = block.getC();
+				if (future.length() >= startSeq.length()
+				    && future.substring(0, startSeq.length()).equals(startSeq)) {
+					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
+					currToken = "";
 					
 					String str = "";
-					tokens.add(new Token(block.getA()+"", file, line));
+					tokens.add(new Token(startSeq, file, line));
+
+					i += startSeq.length()-1;
 					
 					stringLoop: while (true) {
 						future = source.substring(++i);
 						if (source.length() > i && source.charAt(i)=='\n') line++;
 						
-						if (future.length() >= 1 && future.charAt(0) == block.getC()) {
-							if (future.length() >= 2 && future.charAt(1) == block.getB()) {
-								str += block.getB();
-								i++;
+						if (future.length() >= 1 && future.charAt(0) == escapeChar) {
+							if (future.length() >= endSeq.length()+1
+							    && future.substring(1, startSeq.length()+1).equals(endSeq)) {
+								str += endSeq;
+								i += endSeq.length();
 								continue;
 							}
 							else if (future.length() >= 2) {
@@ -360,12 +381,14 @@ public class TokenScanner {
 										continue stringLoop;
 									}
 								}
-								throw new ParsingException("Invalid escape sequence '" + block.getC() + future.charAt(1) + "'", new Token(block.getA()+str, file, line));
+								throw new ParsingException("Invalid escape sequence '" + escapeChar + future.charAt(1) + "'", new Token(block.getA()+str, file, line));
 							}
 						}
-						if (future.length() >= 1 && future.charAt(0) == block.getB()) {
+						if (future.length() >= endSeq.length()
+						    && future.substring(0, endSeq.length()).equals(endSeq)) {
 							tokens.add(new Token(str, file, line));
-							tokens.add(new Token(block.getB()+"", file, line));
+							tokens.add(new Token(endSeq, file, line));
+							i += endSeq.length()-1;
 							continue outer;
 						} else if (future.length() >= 1) {
 							str += future.charAt(0);
