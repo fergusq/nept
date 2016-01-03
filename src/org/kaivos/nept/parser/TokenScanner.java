@@ -317,15 +317,6 @@ public class TokenScanner {
 					}
 				}
 			}
-			
-			for (String op : operators) {
-				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-					tokens.add(new Token(op, file, line));
-					i = i + op.length()-1;
-					continue outer;
-				}
-			}
 			for (Pattern p : patterns) {
 				Matcher m = p.matcher(future);
 				if (m.find() && m.start() == 0) {
@@ -354,7 +345,7 @@ public class TokenScanner {
 						future = source.substring(++i);
 						if (source.length() > i && source.charAt(i)=='\n') line++;
 						
-						if (future.length() >= 1 && future.charAt(0) == escapeChar) {
+						if (escapeChar != '\0' && future.length() >= 1 && future.charAt(0) == escapeChar) {
 							if (future.length() >= endSeq.length()+1
 							    && future.substring(1, startSeq.length()+1).equals(endSeq)) {
 								str += endSeq;
@@ -396,6 +387,15 @@ public class TokenScanner {
 							throw new ParsingException("Unexpected EOF in the middle of string constant", new Token(EOF, file, line));
 						}
 					}
+				}
+			}
+			
+			for (String op : operators) {
+				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
+					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+					tokens.add(new Token(op, file, line));
+					i = i + op.length()-1;
+					continue outer;
 				}
 			}
 			
