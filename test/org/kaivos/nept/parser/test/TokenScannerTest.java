@@ -48,4 +48,30 @@ public class TokenScannerTest {
 			     joinTokens(t.tokenize("[[ab\nb\\a\" \ra[b]ba]]", "<test>")));
 	}
 	
+	@Test
+	public void testComment() {
+		TokenScanner t = new TokenScanner()
+			.addCommentRule("alku", "loppu")
+			.appendOnEOF("<EOF>");
+		assertEquals("abb, dabba, <EOF>",
+			     joinTokens(t.tokenize("abbalkukanneloppudabba", "<test>")));
+	}
+	
+	@Test(expected=ParsingException.class)
+	public void testUnclosedComment() {
+		TokenScanner t = new TokenScanner()
+			.addCommentRule("alku", "loppu")
+			.appendOnEOF("<EOF>");
+	        t.tokenize("abbalkukanneladabba", "<test>");
+	}
+	
+	@Test
+	public void testSingleTokenComment() {
+		TokenScanner t = new TokenScanner()
+			.ignore("kommentti")
+			.appendOnEOF("<EOF>");
+		assertEquals("abba, dabba, <EOF>",
+			     joinTokens(t.tokenize("abbakommenttidabba", "<test>")));
+	}
+	
 }

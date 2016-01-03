@@ -61,7 +61,7 @@ public class TokenScanner {
 		}
 	}
 	
-	private ArrayList<Character> ignore = new ArrayList<>();
+        private ArrayList<String> ignore = new ArrayList<>();
 	private ArrayList<Character> dontIgnore = new ArrayList<>();
 	private ArrayList<Pair<String, String>> ignoreBlocks = new ArrayList<>();
 	private boolean ignoreWhitespace = true;
@@ -82,10 +82,21 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner ignore(char chr) {
-		if (dontIgnore.contains(chr))
+	        ignore(""+chr);
+		return this;
+	}
+	
+	/**
+	 * Tells the scanner to ignore all instances of this sequence in the source code
+	 * 
+	 * @param seq The sequence
+	 * @return self
+	 */
+	public TokenScanner ignore(String seq) {
+		if (seq.length() == 1 && dontIgnore.contains(seq.charAt(0)))
 			throw new IllegalArgumentException("The character being ignored is already marked not to be ignored");
 		
-		ignore.add(chr);
+		ignore.add(seq);
 		return this;
 	}
 	
@@ -96,7 +107,7 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner dontIgnore(char chr) {
-		if (ignore.contains(chr))
+		if (ignore.contains(""+chr))
 			throw new IllegalArgumentException("The character marked to not being ignored is already marked to be ignored");
 		
 		dontIgnore.add(chr);
@@ -291,29 +302,44 @@ public class TokenScanner {
 			i++;
 			
 			if (source.charAt(i)=='\n') line++;
-			if (ignore.contains(source.charAt(i))) {
-				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-				continue;
-			}
 			if (!dontIgnore.contains(source.charAt(i)) && ignoreWhitespace && Character.isWhitespace(source.charAt(i))) {
-				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
+				currToken = "";
 				continue;
 			}
 			
 			String future = source.substring(i);
 			
+			for (String seq : ignore) {
+				if (future.length() >= seq.length()
+				    && future.substring(0, seq.length()).equals(seq)) {
+					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
+					currToken = "";
+					i += seq.length()-1;
+					continue outer;
+				}
+			}
+			
 			for (Pair<String, String> block : ignoreBlocks) {
-				String op = block.getA();
-				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-					
-					op = block.getB();
-					while (true) if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
-						i = i + op.length()-1;
-						continue outer;
-					} else {
-						future = source.substring(++i);
-						if (source.length() > i && source.charAt(i)=='\n') line++;
+				String startSeq = block.getA();
+				String endSeq = block.getB();
+				if (future.length() >= startSeq.length()
+				    && future.substring(0, startSeq.length()).equals(startSeq)) {
+					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
+					currToken = "";
+				        
+					while (true) {
+						if (future.length() >= endSeq.length()
+						    && future.substring(0, endSeq.length()).equals(endSeq)) {
+							i += endSeq.length()-1;
+							continue outer;
+						} else {
+							future = source.substring(++i);
+							if (future.length() == 0)
+								throw new ParsingException("Unexpected EOF in the middle of a comment", new Token(EOF, file, line));
+							if (source.charAt(i)=='\n')
+								line++;
+						}
 					}
 				}
 			}
@@ -384,7 +410,7 @@ public class TokenScanner {
 						} else if (future.length() >= 1) {
 							str += future.charAt(0);
 						} else {
-							throw new ParsingException("Unexpected EOF in the middle of string constant", new Token(EOF, file, line));
+							throw new ParsingException("Unexpected EOF in the middle of a string constant", new Token(EOF, file, line));
 						}
 					}
 				}
