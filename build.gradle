@@ -1,4 +1,14 @@
 apply plugin: 'java'
+
 sourceCompatibility = 1.8
 version = '1.2'
+
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testCompile 'junit:junit:4.12'
+}
+
 sourceSets.main.java.srcDirs = ['src']
+sourceSets.test.java.srcDirs = ['test']
