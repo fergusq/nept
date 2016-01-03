@@ -25,6 +25,18 @@ public class TokenList {
 		this.tokens = tokens;
 		this.index = 0;
 	}
+
+	/**
+	 * Returns the next token from the list and increases the index counter
+	 * 
+	 * @return The next token
+	 * @throws IndexOutOfBoundsException If no tokens left
+	 */
+	public void shift() {
+		index++;
+		if (index >= tokens.size())
+			throw new IndexOutOfBoundsException();
+	}
 	
 	/**
 	 * Returns the next token from the list and increases the index counter
@@ -131,6 +143,19 @@ public class TokenList {
 			throw new ParsingException(expected(keyword), next);
 		return next;
 	}
+
+	/**
+	 * Compares the next token to some keywords. If one of them
+	 * matches, it will be accepted.
+	 * 
+	 * @param keyword The keyword(s)
+	 * @return <code>true</code> if a keyword was accepted, otherwise <code>false</code>
+	 */
+	public boolean acceptIfNext(String... keyword) {
+		boolean isItNext = isNext(keyword);
+		if (isItNext) shift();
+		return isItNext;
+	}
 	
 	/**
 	 * Returns a string usable in error messages
@@ -145,7 +170,7 @@ public class TokenList {
 				+ Arrays.asList(keyword).stream()
 					.limit(keyword.length-1)
 					.collect(Collectors.joining("', `"))
-				+ "' or `" + keyword[0] + "'";
+				+ "' or `" + keyword[keyword.length-1] + "'";
 	}
 	
 	/**
