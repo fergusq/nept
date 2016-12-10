@@ -29,7 +29,6 @@ public class TokenList {
 	/**
 	 * Returns the next token from the list and increases the index counter
 	 * 
-	 * @return The next token
 	 * @throws IndexOutOfBoundsException If no tokens left
 	 */
 	public void shift() {

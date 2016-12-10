@@ -187,7 +187,7 @@ public class TokenScanner {
 	/**
 	 * Declares a new escape code rule to be used in string literals
 	 *
-	 * @param code The character used as a part of the escape code
+	 * @param code The character used as the first part of the escape code
 	 * @param replacement The character to which the escape code expands
 	 * @return self
 	 */
@@ -200,10 +200,11 @@ public class TokenScanner {
 	 * Declares a new escape code rule to be used in string literals
 	 *
 	 * A character escape code is of form \xNNNN. You can specify the
-	 * start character x and the number of hexadecimal digits
+	 * start character x, the number of digits and the radix
 	 *
-	 * @param code The character used as a part of the escape code
-	 * @param replacement The character to which the escape code expands
+	 * @param code The character used as the first part of the escape code
+	 * @param numberOfDigits The number of digits after the first character
+	 * @param radix The radix of the number
 	 * @return self
 	 */
 	public TokenScanner addCharacterEscapeCode(char code, int numberOfDigits, int radix) {
@@ -288,13 +289,13 @@ public class TokenScanner {
 	 * 
 	 * @param source The string
 	 * @param file The name of the file or stream
-	 * @param line The line number of source in the original file
+	 * @param firstLine The line number of source in the original file
 	 * @return A TokenList
 	 */
 	public TokenList tokenize(String source, String file, int firstLine) {
 		ArrayList<Token> tokens = new ArrayList<Token>();
 		
-		int line = firstLine-1;
+		int line = firstLine;
 		String currToken = "";
 		
 		int i = -1;

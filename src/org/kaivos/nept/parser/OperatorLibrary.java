@@ -151,6 +151,7 @@ public class OperatorLibrary<E> {
 	/**
 	 * Parses the right-side
 	 * 
+	 * @param tl the list of token to parse the right-side from
 	 * @param op The operator
 	 * @return The syntax tree object of the right side
 	 */
