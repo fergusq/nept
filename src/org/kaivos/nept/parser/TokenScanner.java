@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,11 +17,11 @@ import java.util.regex.Pattern;
  *
  */
 public class TokenScanner {
-	
+
 	private static class Pair<T, U> {
 		private final T a;
 		private final U b;
-		
+
 		public Pair(T a, U b) {
 			super();
 			this.a = a;
@@ -35,12 +36,12 @@ public class TokenScanner {
 			return b;
 		}
 	}
-	
+
 	private static class Trair<T, U, V> {
 		private final T a;
 		private final U b;
 		private final V c;
-		
+
 		public Trair(T a, U b, V c) {
 			super();
 			this.a = a;
@@ -55,26 +56,26 @@ public class TokenScanner {
 		public U getB() {
 			return b;
 		}
-		
+
 		public V getC() {
 			return c;
 		}
 	}
-	
-        private ArrayList<String> ignore = new ArrayList<>();
+
+	private ArrayList<String> ignore = new ArrayList<>();
 	private ArrayList<Character> dontIgnore = new ArrayList<>();
 	private ArrayList<Pair<String, String>> ignoreBlocks = new ArrayList<>();
 	private boolean ignoreWhitespace = true;
-	
-	private ArrayList<Pattern> patterns = new ArrayList<>();
+
+	private ArrayList<Pair<char[], Pattern>> patterns = new ArrayList<>();
 	private ArrayList<String> operators = new ArrayList<>();
 	private ArrayList<Trair<String, String, Character>> stringBlocks = new ArrayList<>();
 	private ArrayList<Pair<Character, String>> escapeCodes = new ArrayList<>();
 	private ArrayList<Trair<Character, Integer, Integer>> charEscapeCodes = new ArrayList<>();
 	private boolean allPunctuation = true;
-	
+
 	private String EOF = null;
-	
+
 	/**
 	 * Tells the scanner to ignore all instances of this character in the source code
 	 * 
@@ -82,10 +83,10 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner ignore(char chr) {
-	        ignore(""+chr);
+		ignore(""+chr);
 		return this;
 	}
-	
+
 	/**
 	 * Tells the scanner to ignore all instances of this sequence in the source code
 	 * 
@@ -95,11 +96,11 @@ public class TokenScanner {
 	public TokenScanner ignore(String seq) {
 		if (seq.length() == 1 && dontIgnore.contains(seq.charAt(0)))
 			throw new IllegalArgumentException("The character being ignored is already marked not to be ignored");
-		
+
 		ignore.add(seq);
 		return this;
 	}
-	
+
 	/**
 	 * Tells the scanner to ignore all instances of this character in the source code
 	 * 
@@ -109,11 +110,11 @@ public class TokenScanner {
 	public TokenScanner dontIgnore(char chr) {
 		if (ignore.contains(""+chr))
 			throw new IllegalArgumentException("The character marked to not being ignored is already marked to be ignored");
-		
+
 		dontIgnore.add(chr);
 		return this;
 	}
-	
+
 	/**
 	 * Tells the scanner to ignore all whitespace characters identified by the {@link Character}.isWhitespace. All whitespace characters are ignored by default.
 	 * 
@@ -124,7 +125,7 @@ public class TokenScanner {
 		ignoreWhitespace = value;
 		return this;
 	}
-	
+
 	/**
 	 * Tells the scanner to append a string to the end of the list when EOF is encountered.
 	 * 
@@ -135,18 +136,20 @@ public class TokenScanner {
 		EOF = text;
 		return this;
 	}
-	
+
 	/**
 	 * Declares a new pattern rule
 	 * 
 	 * @param p The pattern
+	 * @param startsWith Possible characters that can start the pattern for optimization purposes. Can be left empty.
 	 * @return self
 	 */
-	public TokenScanner addPatternRule(Pattern p) {
-		patterns.add(p);
+	public TokenScanner addPatternRule(Pattern p, char... startsWith) {
+		Arrays.sort(startsWith);
+		patterns.add(new Pair<>(startsWith, p));
 		return this;
 	}
-	
+
 	/**
 	 * Declares a new operator rule
 	 * 
@@ -157,7 +160,7 @@ public class TokenScanner {
 		operators.add(operator);
 		return this;
 	}
-	
+
 	/**
 	 * Decalres a new string rule
 	 * 
@@ -170,7 +173,7 @@ public class TokenScanner {
 		stringBlocks.add(new Trair<>(""+start, ""+end, escape));
 		return this;
 	}
-	
+
 	/**
 	 * Decalres a new string rule
 	 * 
@@ -211,7 +214,7 @@ public class TokenScanner {
 		charEscapeCodes.add(new Trair<>(code, numberOfDigits, radix));
 		return this;
 	}
-	
+
 	/**
 	 * Declares a new comment rule, tells the scanner to ignore all characters between start and end tokens
 	 * 
@@ -223,7 +226,7 @@ public class TokenScanner {
 		ignoreBlocks.add(new Pair<>(start, end));
 		return this;
 	}
-	
+
 	/**
 	 * Declares all characters of the parameter string as one character operators
 	 * 
@@ -235,7 +238,7 @@ public class TokenScanner {
 			addOperatorRule(""+chr);
 		return this;
 	}
-	
+
 	/**
 	 * Tells scanner to separate all non-letter and non-digit characters from letter and digit characters. This is set to true by default.
 	 * 
@@ -246,7 +249,7 @@ public class TokenScanner {
 		allPunctuation = value;
 		return this;
 	}
-	
+
 	/**
 	 * Returns the operator list
 	 * 
@@ -255,7 +258,7 @@ public class TokenScanner {
 	public List<String> getOperators() {
 		return operators;
 	}
-	
+
 	/**
 	 * Reads tokens from a file
 	 * 
@@ -265,11 +268,11 @@ public class TokenScanner {
 	 */
 	public TokenList tokenize(File file) throws IOException {
 		String content = "";
-		
+
 		for (String s : java.nio.file.Files.readAllLines(Paths.get(file.toURI()), Charset.defaultCharset())) {
 			content += s + "\n";
 		}
-		
+
 		return tokenize(content, file.getName());
 	}
 
@@ -283,7 +286,7 @@ public class TokenScanner {
 	public TokenList tokenize(String source, String file) {
 		return tokenize(source, file, 1);
 	}
-	
+
 	/**
 	 * Reads tokens
 	 * 
@@ -294,44 +297,44 @@ public class TokenScanner {
 	 */
 	public TokenList tokenize(String source, String file, int firstLine) {
 		ArrayList<Token> tokens = new ArrayList<Token>();
-		
+
 		int line = firstLine;
 		String currToken = "";
-		
+
 		int i = -1;
 		outer: while (i < source.length()-1) {
 			i++;
-			
+
 			if (source.charAt(i)=='\n') line++;
 			if (!dontIgnore.contains(source.charAt(i)) && ignoreWhitespace && Character.isWhitespace(source.charAt(i))) {
 				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 				currToken = "";
 				continue;
 			}
-			
+
 			String future = source.substring(i);
-			
+
 			for (String seq : ignore) {
 				if (future.length() >= seq.length()
-				    && future.substring(0, seq.length()).equals(seq)) {
+						&& future.substring(0, seq.length()).equals(seq)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 					currToken = "";
 					i += seq.length()-1;
 					continue outer;
 				}
 			}
-			
+
 			for (Pair<String, String> block : ignoreBlocks) {
 				String startSeq = block.getA();
 				String endSeq = block.getB();
 				if (future.length() >= startSeq.length()
-				    && future.substring(0, startSeq.length()).equals(startSeq)) {
+						&& future.substring(0, startSeq.length()).equals(startSeq)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 					currToken = "";
-				        
+
 					while (true) {
 						if (future.length() >= endSeq.length()
-						    && future.substring(0, endSeq.length()).equals(endSeq)) {
+								&& future.substring(0, endSeq.length()).equals(endSeq)) {
 							i += endSeq.length()-1;
 							continue outer;
 						} else {
@@ -344,37 +347,39 @@ public class TokenScanner {
 					}
 				}
 			}
-			for (Pattern p : patterns) {
-				Matcher m = p.matcher(future);
-				if (m.find() && m.start() == 0) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-					tokens.add(new Token(source.substring(i, i+m.end()), file, line));
-					i = i+m.end()-1;
-					continue outer;
+			for (Pair<char[], Pattern> p : patterns) {
+				if (Arrays.binarySearch(p.a, future.charAt(0)) >= 0) {
+					Matcher m = p.b.matcher(future);
+					if (m.find() && m.start() == 0) {
+						if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
+						tokens.add(new Token(source.substring(i, i+m.end()), file, line));
+						i = i+m.end()-1;
+						continue outer;
+					}
 				}
 			}
-			
+
 			for (Trair<String, String, Character> block : stringBlocks) {
 				String startSeq = block.getA();
 				String endSeq = block.getB();
 				char escapeChar = block.getC();
 				if (future.length() >= startSeq.length()
-				    && future.substring(0, startSeq.length()).equals(startSeq)) {
+						&& future.substring(0, startSeq.length()).equals(startSeq)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 					currToken = "";
-					
+
 					String str = "";
 					tokens.add(new Token(startSeq, file, line));
 
 					i += startSeq.length()-1;
-					
+
 					stringLoop: while (true) {
 						future = source.substring(++i);
 						if (source.length() > i && source.charAt(i)=='\n') line++;
-						
+
 						if (escapeChar != '\0' && future.length() >= 1 && future.charAt(0) == escapeChar) {
 							if (future.length() >= endSeq.length()+1
-							    && future.substring(1, startSeq.length()+1).equals(endSeq)) {
+									&& future.substring(1, startSeq.length()+1).equals(endSeq)) {
 								str += endSeq;
 								i += endSeq.length();
 								continue;
@@ -403,7 +408,7 @@ public class TokenScanner {
 							}
 						}
 						if (future.length() >= endSeq.length()
-						    && future.substring(0, endSeq.length()).equals(endSeq)) {
+								&& future.substring(0, endSeq.length()).equals(endSeq)) {
 							tokens.add(new Token(str, file, line));
 							tokens.add(new Token(endSeq, file, line));
 							i += endSeq.length()-1;
@@ -416,7 +421,7 @@ public class TokenScanner {
 					}
 				}
 			}
-			
+
 			for (String op : operators) {
 				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
@@ -425,24 +430,24 @@ public class TokenScanner {
 					continue outer;
 				}
 			}
-			
+
 			if (allPunctuation && !Character.isLetter(future.charAt(0)) && !Character.isDigit(future.charAt(0))) {
 				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 				tokens.add(new Token(""+future.charAt(0), file, line));
 				i = i + 0;
 				continue outer;
 			}
-		
+
 			currToken += future.charAt(0);
 		}
-		
+
 		if (!currToken.isEmpty())
 			tokens.add(new Token(currToken, file, line));
-		
+
 		if (EOF != null && !EOF.isEmpty())
 			tokens.add(new Token(EOF, file, line));
-		
+
 		return new TokenList(tokens);
 	}
-	
+
 }
