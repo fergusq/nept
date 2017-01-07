@@ -334,7 +334,6 @@ public class TokenScanner {
 					
 					while (true) {
 						i++;
-						System.err.println(source.substring(i));
 						if (source.startsWith(endSeq, i)) {
 							i += endSeq.length()-1;
 							continue outer;
