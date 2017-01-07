@@ -315,8 +315,7 @@ public class TokenScanner {
 			String future = source.substring(i);
 
 			for (String seq : ignore) {
-				if (future.length() >= seq.length()
-						&& future.substring(0, seq.length()).equals(seq)) {
+				if (future.startsWith(seq)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 					currToken = "";
 					i += seq.length()-1;
@@ -327,19 +326,20 @@ public class TokenScanner {
 			for (Pair<String, String> block : ignoreBlocks) {
 				String startSeq = block.getA();
 				String endSeq = block.getB();
-				if (future.length() >= startSeq.length()
-						&& future.substring(0, startSeq.length()).equals(startSeq)) {
+				if (future.startsWith(startSeq)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 					currToken = "";
 
+					i += startSeq.length()-1;
+					
 					while (true) {
-						if (future.length() >= endSeq.length()
-								&& future.substring(0, endSeq.length()).equals(endSeq)) {
+						i++;
+						System.err.println(source.substring(i));
+						if (source.startsWith(endSeq, i)) {
 							i += endSeq.length()-1;
 							continue outer;
 						} else {
-							future = source.substring(++i);
-							if (future.length() == 0)
+							if (source.length() <= i)
 								throw new ParsingException("Unexpected EOF in the middle of a comment", new Token(EOF, file, line));
 							if (source.charAt(i)=='\n')
 								line++;
@@ -363,58 +363,56 @@ public class TokenScanner {
 				String startSeq = block.getA();
 				String endSeq = block.getB();
 				char escapeChar = block.getC();
-				if (future.length() >= startSeq.length()
-						&& future.substring(0, startSeq.length()).equals(startSeq)) {
+				if (future.startsWith(startSeq)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
 					currToken = "";
 
-					String str = "";
+					StringBuilder str = new StringBuilder();
 					tokens.add(new Token(startSeq, file, line));
 
 					i += startSeq.length()-1;
 
 					stringLoop: while (true) {
-						future = source.substring(++i);
-						if (source.length() > i && source.charAt(i)=='\n') line++;
+						i++;
+						
+						if (source.length() > i && source.charAt(i) == '\n') line++;
 
-						if (escapeChar != '\0' && future.length() >= 1 && future.charAt(0) == escapeChar) {
-							if (future.length() >= endSeq.length()+1
-									&& future.substring(1, startSeq.length()+1).equals(endSeq)) {
-								str += endSeq;
+						if (escapeChar != '\0' && source.length() > i && source.charAt(i) == escapeChar) {
+							if (source.startsWith(endSeq, i+1)) {
+								str.append(endSeq);
 								i += endSeq.length();
 								continue;
 							}
-							else if (future.length() >= 2) {
+							else if (source.length() >= i+2) {
 								for (Pair<Character, String> escapeCode : escapeCodes) {
-									if (future.charAt(1) == escapeCode.getA()) {
-										str += escapeCode.getB();
+									if (source.charAt(i+1) == escapeCode.getA()) {
+										str.append(escapeCode.getB());
 										i++;
 										continue stringLoop;
 									}
 								}
 								for (Trair<Character, Integer, Integer> escapeCode : charEscapeCodes) {
-									if (future.charAt(1) == escapeCode.getA()) {
+									if (source.charAt(i+1) == escapeCode.getA()) {
 										String characterCode = "";
 										for (int j = 2; j < escapeCode.getB()+2; j++) {
-											characterCode += future.charAt(j);
+											characterCode += source.charAt(i+2);
 											i++;
 										}
-										str += (char) Integer.parseInt(characterCode, escapeCode.getC());
+										str.append((char) Integer.parseInt(characterCode, escapeCode.getC()));
 										i++;
 										continue stringLoop;
 									}
 								}
-								throw new ParsingException("Invalid escape sequence '" + escapeChar + future.charAt(1) + "'", new Token(block.getA()+str, file, line));
+								throw new ParsingException("Invalid escape sequence '" + escapeChar + source.charAt(i+1) + "'", new Token(block.getA()+str, file, line));
 							}
 						}
-						if (future.length() >= endSeq.length()
-								&& future.substring(0, endSeq.length()).equals(endSeq)) {
-							tokens.add(new Token(str, file, line));
+						if (source.startsWith(endSeq, i)) {
+							tokens.add(new Token(str.toString(), file, line));
 							tokens.add(new Token(endSeq, file, line));
 							i += endSeq.length()-1;
 							continue outer;
-						} else if (future.length() >= 1) {
-							str += future.charAt(0);
+						} else if (source.length() > i) {
+							str.append(source.charAt(i));
 						} else {
 							throw new ParsingException("Unexpected EOF in the middle of a string constant", new Token(EOF, file, line));
 						}
@@ -423,7 +421,7 @@ public class TokenScanner {
 			}
 
 			for (String op : operators) {
-				if (future.length() >= op.length() && future.substring(0, op.length()).equals(op)) {
+				if (future.startsWith(op)) {
 					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
 					tokens.add(new Token(op, file, line));
 					i = i + op.length()-1;
