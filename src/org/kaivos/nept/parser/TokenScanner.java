@@ -1,14 +1,20 @@
 package org.kaivos.nept.parser;
 
+//import static java.util.stream.Collectors.toList;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+//import java.util.HashMap;
 import java.util.List;
+//import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+//import org.kaivos.röda.Timer;
 
 /**
  * Reads tokens from a string
@@ -62,19 +68,33 @@ public class TokenScanner {
 		}
 	}
 
-	private ArrayList<String> ignore = new ArrayList<>();
-	private ArrayList<Character> dontIgnore = new ArrayList<>();
-	private ArrayList<Pair<String, String>> ignoreBlocks = new ArrayList<>();
+	@SuppressWarnings("unchecked")
+	private ArrayList<String>[] ignore = new ArrayList[256];
+	private String dontIgnore = "";
+	@SuppressWarnings("unchecked")
+	private ArrayList<Pair<String, String>>[] ignoreBlocks = new ArrayList[256];
 	private boolean ignoreWhitespace = true;
 
-	private ArrayList<Pair<char[], Pattern>> patterns = new ArrayList<>();
-	private ArrayList<String> operators = new ArrayList<>();
-	private ArrayList<Trair<String, String, Character>> stringBlocks = new ArrayList<>();
+	@SuppressWarnings("unchecked")
+	private ArrayList<Pattern>[] patterns = new ArrayList[256];
+	
+	@SuppressWarnings("unchecked")
+	private ArrayList<String>[] operators = new ArrayList[256];
+	private String oneCharOperators = "";
+	
+	@SuppressWarnings("unchecked")
+	private ArrayList<Trair<String, String, Character>>[] stringBlocks = new ArrayList[256];
 	private ArrayList<Pair<Character, String>> escapeCodes = new ArrayList<>();
 	private ArrayList<Trair<Character, Integer, Integer>> charEscapeCodes = new ArrayList<>();
 	private boolean allPunctuation = true;
 
 	private String EOF = null;
+	
+	{ for (int i = 0; i < operators.length; i++) operators[i] = new ArrayList<>(); }
+	{ for (int i = 0; i < ignoreBlocks.length; i++) ignoreBlocks[i] = new ArrayList<>(); }
+	{ for (int i = 0; i < ignore.length; i++) ignore[i] = new ArrayList<>(); }
+	{ for (int i = 0; i < stringBlocks.length; i++) stringBlocks[i] = new ArrayList<>(); }
+	{ for (int i = 0; i < patterns.length; i++) patterns[i] = new ArrayList<>(); }
 
 	/**
 	 * Tells the scanner to ignore all instances of this character in the source code
@@ -94,10 +114,10 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner ignore(String seq) {
-		if (seq.length() == 1 && dontIgnore.contains(seq.charAt(0)))
+		if (seq.length() == 1 && dontIgnore.indexOf(seq.charAt(0)) >= 0)
 			throw new IllegalArgumentException("The character being ignored is already marked not to be ignored");
 
-		ignore.add(seq);
+		ignore[seq.charAt(0)].add(seq);
 		return this;
 	}
 
@@ -108,10 +128,10 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner dontIgnore(char chr) {
-		if (ignore.contains(""+chr))
+		if (ignore[chr].contains(""+chr))
 			throw new IllegalArgumentException("The character marked to not being ignored is already marked to be ignored");
 
-		dontIgnore.add(chr);
+		dontIgnore += chr;
 		return this;
 	}
 
@@ -146,7 +166,8 @@ public class TokenScanner {
 	 */
 	public TokenScanner addPatternRule(Pattern p, char... startsWith) {
 		Arrays.sort(startsWith);
-		patterns.add(new Pair<>(startsWith, p));
+		for (char sw : startsWith)
+			patterns[sw].add(p);
 		return this;
 	}
 
@@ -157,7 +178,7 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner addOperatorRule(String operator) {
-		operators.add(operator);
+		operators[operator.charAt(0)].add(operator);
 		return this;
 	}
 
@@ -170,7 +191,7 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner addStringRule(char start, char end, char escape) {
-		stringBlocks.add(new Trair<>(""+start, ""+end, escape));
+		stringBlocks[start].add(new Trair<>(""+start, ""+end, escape));
 		return this;
 	}
 
@@ -183,7 +204,7 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner addStringRule(String start, String end, char escape) {
-		stringBlocks.add(new Trair<>(start, end, escape));
+		stringBlocks[start.charAt(0)].add(new Trair<>(start, end, escape));
 		return this;
 	}
 
@@ -223,7 +244,7 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner addCommentRule(String start, String end) {
-		ignoreBlocks.add(new Pair<>(start, end));
+		ignoreBlocks[start.charAt(0)].add(new Pair<>(start, end));
 		return this;
 	}
 
@@ -234,8 +255,7 @@ public class TokenScanner {
 	 * @return self
 	 */
 	public TokenScanner addOperators(String operatorString) {
-		for (char chr : operatorString.toCharArray())
-			addOperatorRule(""+chr);
+		oneCharOperators += operatorString;
 		return this;
 	}
 
@@ -256,7 +276,12 @@ public class TokenScanner {
 	 * @return see above
 	 */
 	public List<String> getOperators() {
-		return operators;
+		List<String> newOperators = new ArrayList<>();
+		for (ArrayList<String> operatorList : operators)
+			newOperators.addAll(operatorList);
+		for (char chr : oneCharOperators.toCharArray())
+			newOperators.add(String.valueOf(chr));
+		return newOperators;
 	}
 
 	/**
@@ -286,6 +311,48 @@ public class TokenScanner {
 	public TokenList tokenize(String source, String file) {
 		return tokenize(source, file, 1);
 	}
+	
+	/*
+	private Timer ignoreCharsTime = new Timer(),
+			ignoreTokensTime = new Timer(),
+			ignoreBlocksTime = new Timer(),
+			patternTime = new Timer(),
+			stringBlocksTime = new Timer(),
+			operatorsTime = new Timer(),
+			operatorCharsTime = new Timer(),
+			allPunctuationTime = new Timer(),
+			substringTime = new Timer();
+	
+	public void printStatistics() {
+		HashMap<String, Long> map = new HashMap<>();
+		map.put("ignoreChars", ignoreCharsTime.timeNanos());
+		map.put("ignoreTokens", ignoreTokensTime.timeNanos());
+		map.put("ignoreBlocks", ignoreBlocksTime.timeNanos());
+		map.put("pattern", patternTime.timeNanos());
+		map.put("stringBlocks", stringBlocksTime.timeNanos());
+		map.put("operators", operatorsTime.timeNanos());
+		map.put("operatorChars", operatorCharsTime.timeNanos());
+		map.put("allPunctuation", allPunctuationTime.timeNanos());
+		map.put("substring", substringTime.timeNanos());
+		
+		List<Entry<String, Long>> data = map.entrySet()
+				.stream().sorted((a, b) -> Long.compare(b.getValue(), a.getValue())).collect(toList());
+		
+		long sum = data.parallelStream().mapToLong(e -> e.getValue().longValue()).sum();
+		double acc = 0;
+		
+		System.out.printf("%5s %5s %6s %s\n", "%", "ACC", "MS", "FUNCTION");
+		
+		for (Entry<String, Long> e : data) {
+			String f = e.getKey();
+			double time = e.getValue() / 1_000_000d;
+			double percent = 100d * e.getValue() / sum;
+			acc += percent;
+			
+			System.out.printf("%5.2f %5.2f %6.2f %s\n", percent, acc, time, f);
+		}
+	}
+	*/
 
 	/**
 	 * Reads tokens
@@ -299,147 +366,231 @@ public class TokenScanner {
 		ArrayList<Token> tokens = new ArrayList<Token>();
 
 		int line = firstLine;
-		String currToken = "";
+		StringBuilder currToken = new StringBuilder();
 
+		char[] oneCharOperatorsArr = oneCharOperators.toCharArray();
+		Arrays.sort(oneCharOperatorsArr);
+		
+		char[] dontIgnoreArr = dontIgnore.toCharArray();
+		Arrays.sort(dontIgnoreArr);
+		
 		int i = -1;
 		outer: while (i < source.length()-1) {
 			i++;
+			
+			//ignoreCharsTime.start();
 
 			if (source.charAt(i)=='\n') line++;
-			if (!dontIgnore.contains(source.charAt(i)) && ignoreWhitespace && Character.isWhitespace(source.charAt(i))) {
-				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
-				currToken = "";
+			if (ignoreWhitespace
+					&& Character.isWhitespace(source.charAt(i))
+					&& Arrays.binarySearch(dontIgnoreArr, source.charAt(i)) < 0) {
+				if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+				currToken.setLength(0);
+				
+				//ignoreCharsTime.stop();
 				continue;
 			}
+			
+			//ignoreCharsTime.stop();
 
-			String future = source.substring(i);
+			//substringTime.start();
+			
+			boolean isBelow256 = source.charAt(i) < 256;
 
-			for (String seq : ignore) {
-				if (future.startsWith(seq)) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
-					currToken = "";
-					i += seq.length()-1;
-					continue outer;
-				}
-			}
-
-			for (Pair<String, String> block : ignoreBlocks) {
-				String startSeq = block.getA();
-				String endSeq = block.getB();
-				if (future.startsWith(startSeq)) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
-					currToken = "";
-
-					i += startSeq.length()-1;
-					
-					while (true) {
-						i++;
-						if (source.startsWith(endSeq, i)) {
-							i += endSeq.length()-1;
-							continue outer;
-						} else {
-							if (source.length() <= i)
-								throw new ParsingException("Unexpected EOF in the middle of a comment", new Token(EOF, file, line));
-							if (source.charAt(i)=='\n')
-								line++;
-						}
-					}
-				}
-			}
-			for (Pair<char[], Pattern> p : patterns) {
-				if (Arrays.binarySearch(p.a, future.charAt(0)) >= 0) {
-					Matcher m = p.b.matcher(future);
-					if (m.find() && m.start() == 0) {
-						if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-						tokens.add(new Token(source.substring(i, i+m.end()), file, line));
-						i = i+m.end()-1;
+			//substringTime.stop();
+			
+			//ignoreTokensTime.start();
+			
+			if (isBelow256) {
+				for (String seq : ignore[source.charAt(i)]) {
+					if (source.startsWith(seq, i)) {
+						if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+						currToken.setLength(0);
+						i += seq.length()-1;
+						
+						//ignoreTokensTime.stop();
 						continue outer;
 					}
 				}
 			}
+			
+			//ignoreTokensTime.stop();
+			
+			//ignoreBlocksTime.start();
 
-			for (Trair<String, String, Character> block : stringBlocks) {
-				String startSeq = block.getA();
-				String endSeq = block.getB();
-				char escapeChar = block.getC();
-				if (future.startsWith(startSeq)) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line));
-					currToken = "";
-
-					StringBuilder str = new StringBuilder();
-					tokens.add(new Token(startSeq, file, line));
-
-					i += startSeq.length()-1;
-
-					stringLoop: while (true) {
-						i++;
+			if (isBelow256) {
+				for (Pair<String, String> block : ignoreBlocks[source.charAt(i)]) {
+					String startSeq = block.getA();
+					String endSeq = block.getB();
+					if (source.startsWith(startSeq, i)) {
+						if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+						currToken.setLength(0);
+	
+						i += startSeq.length()-1;
 						
-						if (source.length() > i && source.charAt(i) == '\n') line++;
-
-						if (escapeChar != '\0' && source.length() > i && source.charAt(i) == escapeChar) {
-							if (source.startsWith(endSeq, i+1)) {
-								str.append(endSeq);
-								i += endSeq.length();
-								continue;
+						while (true) {
+							i++;
+							if (source.startsWith(endSeq, i)) {
+								i += endSeq.length()-1;
+								
+								//ignoreBlocksTime.stop();
+								continue outer;
+							} else {
+								if (source.length() <= i)
+									throw new ParsingException("Unexpected EOF in the middle of a comment",
+											new Token(EOF, file, line));
+								if (source.charAt(i)=='\n')
+									line++;
 							}
-							else if (source.length() >= i+2) {
-								for (Pair<Character, String> escapeCode : escapeCodes) {
-									if (source.charAt(i+1) == escapeCode.getA()) {
-										str.append(escapeCode.getB());
-										i++;
-										continue stringLoop;
-									}
-								}
-								for (Trair<Character, Integer, Integer> escapeCode : charEscapeCodes) {
-									if (source.charAt(i+1) == escapeCode.getA()) {
-										String characterCode = "";
-										for (int j = 2; j < escapeCode.getB()+2; j++) {
-											characterCode += source.charAt(i+2);
-											i++;
-										}
-										str.append((char) Integer.parseInt(characterCode, escapeCode.getC()));
-										i++;
-										continue stringLoop;
-									}
-								}
-								throw new ParsingException("Invalid escape sequence '" + escapeChar + source.charAt(i+1) + "'", new Token(block.getA()+str, file, line));
-							}
-						}
-						if (source.startsWith(endSeq, i)) {
-							tokens.add(new Token(str.toString(), file, line));
-							tokens.add(new Token(endSeq, file, line));
-							i += endSeq.length()-1;
-							continue outer;
-						} else if (source.length() > i) {
-							str.append(source.charAt(i));
-						} else {
-							throw new ParsingException("Unexpected EOF in the middle of a string constant", new Token(EOF, file, line));
 						}
 					}
 				}
 			}
-
-			for (String op : operators) {
-				if (future.startsWith(op)) {
-					if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-					tokens.add(new Token(op, file, line));
-					i = i + op.length()-1;
-					continue outer;
+			
+			//ignoreBlocksTime.stop();
+			
+			//patternTime.start();
+			
+			if (isBelow256) {
+				for (Pattern p : patterns[source.charAt(i)]) {
+					Matcher m = p.matcher(source.substring(i));
+					if (m.find() && m.start() == 0) {
+						if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+						currToken.setLength(0);
+						tokens.add(new Token(source.substring(i, i+m.end()), file, line));
+						i = i+m.end()-1;
+						
+						//patternTime.stop();
+						continue outer;
+					}
 				}
 			}
+			
+			//patternTime.stop();
+			
+			//stringBlocksTime.start();
 
-			if (allPunctuation && !Character.isLetter(future.charAt(0)) && !Character.isDigit(future.charAt(0))) {
-				if (!currToken.isEmpty()) tokens.add(new Token(currToken, file, line)); currToken = "";
-				tokens.add(new Token(""+future.charAt(0), file, line));
-				i = i + 0;
+			if (isBelow256) {
+				for (Trair<String, String, Character> block : stringBlocks[source.charAt(i)]) {
+					String startSeq = block.getA();
+					String endSeq = block.getB();
+					char escapeChar = block.getC();
+					if (source.startsWith(startSeq, i)) {
+						if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+						currToken.setLength(0);
+	
+						StringBuilder str = new StringBuilder();
+						tokens.add(new Token(startSeq, file, line));
+	
+						i += startSeq.length()-1;
+	
+						stringLoop: while (true) {
+							i++;
+							
+							if (source.length() > i && source.charAt(i) == '\n') line++;
+	
+							if (escapeChar != '\0' && source.length() > i && source.charAt(i) == escapeChar) {
+								if (source.startsWith(endSeq, i+1)) {
+									str.append(endSeq);
+									i += endSeq.length();
+									continue;
+								}
+								else if (source.length() >= i+2) {
+									for (Pair<Character, String> escapeCode : escapeCodes) {
+										if (source.charAt(i+1) == escapeCode.getA()) {
+											str.append(escapeCode.getB());
+											i++;
+											continue stringLoop;
+										}
+									}
+									for (Trair<Character, Integer, Integer> escapeCode : charEscapeCodes) {
+										if (source.charAt(i+1) == escapeCode.getA()) {
+											String characterCode = "";
+											for (int j = 2; j < escapeCode.getB()+2; j++) {
+												characterCode += source.charAt(i+2);
+												i++;
+											}
+											str.append((char) Integer.parseInt(characterCode, escapeCode.getC()));
+											i++;
+											continue stringLoop;
+										}
+									}
+									throw new ParsingException("Invalid escape sequence '"
+											+ escapeChar + source.charAt(i+1) + "'",
+											new Token(block.getA()+str, file, line));
+								}
+							}
+							if (source.startsWith(endSeq, i)) {
+								tokens.add(new Token(str.toString(), file, line));
+								tokens.add(new Token(endSeq, file, line));
+								i += endSeq.length()-1;
+								
+								//stringBlocksTime.stop();
+								continue outer;
+							} else if (source.length() > i) {
+								str.append(source.charAt(i));
+							} else {
+								throw new ParsingException("Unexpected EOF in the middle of a string constant",
+										new Token(EOF, file, line));
+							}
+						}
+					}
+				}
+			}
+			
+			//stringBlocksTime.stop();
+			
+			//operatorsTime.start();
+
+			if (isBelow256) {
+				for (String op : operators[source.charAt(i)]) {
+					if (source.startsWith(op, i)) {
+						if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+						currToken.setLength(0);
+						tokens.add(new Token(op, file, line));
+						i = i + op.length()-1;
+						
+						//operatorsTime.stop();
+						continue outer;
+					}
+				}
+			}
+			
+			//operatorsTime.stop();
+			
+			//operatorCharsTime.start();
+			
+			if (Arrays.binarySearch(oneCharOperatorsArr, source.charAt(i)) >= 0) {
+				if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+				currToken.setLength(0);
+				tokens.add(new Token(String.valueOf(source.charAt(i)), file, line));
+				
+				//operatorCharsTime.stop();
 				continue outer;
 			}
+			
+			//operatorCharsTime.stop();
+			
+			//allPunctuationTime.start();
 
-			currToken += future.charAt(0);
+			if (allPunctuation && !Character.isLetter(source.charAt(i)) && !Character.isDigit(source.charAt(i))) {
+				if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
+				currToken.setLength(0);
+				tokens.add(new Token(""+source.charAt(i), file, line));
+				i = i + 0;
+				
+				//allPunctuationTime.stop();
+				continue outer;
+			}
+			
+			//allPunctuationTime.stop();
+
+			currToken.append(source.charAt(i));
 		}
+		
+		//printStatistics();
 
-		if (!currToken.isEmpty())
-			tokens.add(new Token(currToken, file, line));
+		if (currToken.length() > 0) tokens.add(new Token(currToken.toString(), file, line));
 
 		if (EOF != null && !EOF.isEmpty())
 			tokens.add(new Token(EOF, file, line));
